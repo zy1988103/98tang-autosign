@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/) [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-supported-green.svg)](https://github.com/features/actions) [![Selenium](https://img.shields.io/badge/Selenium-4.15+-orange.svg)](https://selenium-python.readthedocs.io/) 
 [![GitHub stars](https://img.shields.io/github/stars/WizisCool/98tang-autosign?style=social)](https://github.com/WizisCool/98tang-autosign/stargazers) [![GitHub forks](https://img.shields.io/github/forks/WizisCool/98tang-autosign?style=social)](https://github.com/WizisCool/98tang-autosign/network/members)
 
-[文档](#文档) • [快速开始](#快速开始) • [配置](#配置参数) • [贡献](#贡献)
+[文档](#-文档) • [快速开始](#-快速开始) • [配置](#-完整配置说明) • [贡献](#-贡献)
 
 </div>
 
