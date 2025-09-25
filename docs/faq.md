@@ -71,7 +71,7 @@ sudo yum install google-noto-cjk-fonts
 A: 编辑 `.github/workflows/autosign.yml` 文件中的 `cron` 表达式：
 ```yaml
 schedule:
-  - cron: '0 1 * * *'  # UTC时间1点 = 北京时间9点
+  - cron: '0 16 * * *'  # UTC时间16点 = 北京时间0点
 ```
 
 ### Q: 安全提问如何配置？
