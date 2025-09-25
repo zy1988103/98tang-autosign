@@ -41,9 +41,16 @@ TELEGRAM_PROXY_URL   # Telegram代理URL（可选）
 **步骤3：配置Environment Variables (可选)**
 在同一页面的 `Environment variables` 部分，可以配置其他选项如：
 ```
+# 拟人化行为配置
 ENABLE_REPLY=true
 REPLY_COUNT=2
 ENABLE_RANDOM_BROWSING=true
+
+# Telegram通知配置
+ENABLE_TELEGRAM_NOTIFICATION=true
+TELEGRAM_SEND_LOG_FILE=true        # 发送日志文件
+TELEGRAM_SEND_SCREENSHOT=true      # 发送页面截图
+
 # 等等其他配置项
 ```
 

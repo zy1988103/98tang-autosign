@@ -75,7 +75,7 @@ class ConfigManager:
         # 拟人化行为配置
         self._config.update(
             {
-                "enable_reply": os.getenv("ENABLE_REPLY", "false").lower() == "true",
+                "enable_reply": os.getenv("ENABLE_REPLY", "true").lower() == "true",
                 "reply_count": int(os.getenv("REPLY_COUNT", "2")),
                 "enable_random_browsing": os.getenv(
                     "ENABLE_RANDOM_BROWSING", "true"
@@ -126,6 +126,10 @@ class ConfigManager:
                 "TELEGRAM_PROXY_URL": os.getenv("TELEGRAM_PROXY_URL", "").strip(),
                 "TELEGRAM_SEND_LOG_FILE": os.getenv(
                     "TELEGRAM_SEND_LOG_FILE", "false"
+                ).lower()
+                == "true",
+                "TELEGRAM_SEND_SCREENSHOT": os.getenv(
+                    "TELEGRAM_SEND_SCREENSHOT", "false"
                 ).lower()
                 == "true",
             }
@@ -305,6 +309,7 @@ class ConfigManager:
             "TELEGRAM_CHAT_ID": self._config["TELEGRAM_CHAT_ID"],
             "TELEGRAM_PROXY_URL": self._config["TELEGRAM_PROXY_URL"],
             "TELEGRAM_SEND_LOG_FILE": self._config["TELEGRAM_SEND_LOG_FILE"],
+            "TELEGRAM_SEND_SCREENSHOT": self._config["TELEGRAM_SEND_SCREENSHOT"],
         }
 
     def get_security_config(self) -> Dict[str, Any]:

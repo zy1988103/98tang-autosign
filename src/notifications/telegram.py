@@ -431,12 +431,13 @@ class TelegramNotifier:
 
         return self.send_message(message.strip())
 
-    def send_screenshot(self, screenshot_path: str) -> bool:
+    def send_screenshot(self, screenshot_path: str, caption: str = None) -> bool:
         """
-        发送错误截图
+        发送截图
 
         Args:
             screenshot_path: 截图文件路径
+            caption: 自定义说明文字（可选）
 
         Returns:
             是否发送成功
@@ -450,9 +451,13 @@ class TelegramNotifier:
 
             with open(screenshot_path, "rb") as f:
                 files = {"photo": f}
+                # 使用自定义caption或默认caption
+                if caption is None:
+                    caption = f'📸 *错误截图*\n\n⏰ 捕获时间: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`'
+
                 data = {
                     "chat_id": self.chat_id,
-                    "caption": f'📸 *错误截图*\n\n⏰ 捕获时间: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`',
+                    "caption": caption,
                     "parse_mode": "MarkdownV2",
                 }
 

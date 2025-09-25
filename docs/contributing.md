@@ -139,6 +139,7 @@ src/
 - **browser/driver.py**: 浏览器驱动管理
 - **automation/signin.py**: 签到核心逻辑
 - **notifications/telegram.py**: Telegram通知
+- **utils/screenshot_helper.py**: 页面截图功能
 
 ### 添加新功能
 
@@ -147,6 +148,26 @@ src/
 3. **添加配置项**: 在config.py中添加相关配置
 4. **更新文档**: 在docs/中更新相关文档
 5. **添加日志**: 使用统一的日志系统记录操作
+
+### 技术实现说明
+
+#### 截图功能架构
+- **utils/screenshot_helper.py**: 封装截图逻辑
+  - 支持错误页面和成功页面截图
+  - 自动调整页面大小以获得完整截图
+  - 集成Telegram文件发送功能
+  - 支持配置化控制截图行为
+
+- **集成点**: 
+  - 错误处理: `app.py`的`_send_error_with_log`方法
+  - 成功通知: `app.py`的`_send_execution_summary`方法
+  - 配置管理: `config.py`的`TELEGRAM_SEND_SCREENSHOT`选项
+
+#### 添加新通知类型
+1. 在`notifications/telegram.py`中扩展方法
+2. 在`utils/`目录下创建相应的辅助类
+3. 在`config.py`中添加控制开关
+4. 在主应用逻辑中集成调用
 
 ## 许可证
 

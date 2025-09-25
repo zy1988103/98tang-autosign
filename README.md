@@ -7,7 +7,7 @@
 - 🤖 **全自动签到**: 模拟真实用户行为，自动完成每日签到
 - 🛡️ **安全提问处理**: 智能识别并回答安全提问，提高成功率
 - 👤 **拟人化操作**: 随机延时、随机浏览、智能回复，避免被检测
-- 📱 **Telegram通知**: 实时推送签到结果和日志文件
+- 📱 **Telegram通知**: 实时推送签到结果、页面截图和日志文件
 - ☁️ **Github Actions**: 支持云端自动运行，无需本地设备
 - ⚡ **智能重试**: 失败自动重试机制，提高成功率
 
@@ -62,7 +62,8 @@
 | `TELEGRAM_BOT_TOKEN` | - | 机器人Token | 找@BotFather申请 |
 | `TELEGRAM_CHAT_ID` | - | 聊天ID | 找@userinfobot获取 |
 | `TELEGRAM_PROXY_URL` | - | 代理地址(可选) | 网络受限时使用 |
-| `TELEGRAM_SEND_LOG_FILE` | `true` | 是否发送日志文件 | `true` (便于调试) |
+| `TELEGRAM_SEND_LOG_FILE` | `true` | 是否发送日志文件 | 便于调试 |
+| `TELEGRAM_SEND_SCREENSHOT` | `false` | 是否发送页面截图 | 可视化反应执行状态 |
 
 ### 🤖 拟人化行为配置
 <details>

@@ -23,6 +23,7 @@ from ..notifications.telegram import (
 )
 from ..utils.timeout_protection import TimeoutProtectionContext
 from ..utils.encoding import EncodingHelper
+from ..utils.screenshot_helper import ScreenshotHelper
 
 
 class AutoSignApp:
@@ -268,6 +269,21 @@ class AutoSignApp:
             # 发送摘要
             self.telegram_notifier.send_summary(summary)
             self.logger.debug("执行摘要已发送到Telegram")
+
+            # 发送执行成功截图（在成功时）
+            if overall_success and self.config_manager.get(
+                "TELEGRAM_SEND_SCREENSHOT", False
+            ):
+                try:
+                    screenshot_helper = ScreenshotHelper(
+                        driver=self.browser_manager.driver,
+                        config=self.config_manager,
+                        logger=self.logger,
+                    )
+                    screenshot_helper.send_success_screenshot(self.telegram_notifier)
+                    self.logger.debug("执行成功截图已发送到Telegram")
+                except Exception as screenshot_error:
+                    self.logger.warning(f"发送执行成功截图失败: {screenshot_error}")
 
             # 只在执行成功时发送日志文件（避免与错误通知重复推送）
             # 失败时的日志文件会通过 _send_error_with_log 方法发送
