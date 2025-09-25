@@ -115,7 +115,7 @@ def main():
         debug_mode = args.debug or is_ci_environment
         if is_ci_environment and not args.debug:
             print("🔍 检测到CI环境，自动启用DEBUG模式以获得详细日志")
-        
+
         # 创建应用实例
         global _app_instance
         _app_instance = AutoSignApp(config_file=args.config, debug_mode=debug_mode)
@@ -143,11 +143,19 @@ def main():
 
     except Exception as e:
         print(f"❌ 程序运行出错: {e}")
-        if args.debug:
+        if args.debug or is_ci_environment:
             import traceback
 
             print("详细错误信息:")
             traceback.print_exc()
+            
+        # 尝试发送错误通知（如果应用实例存在且有Telegram通知器）
+        if _app_instance and hasattr(_app_instance, 'telegram_notifier') and _app_instance.telegram_notifier:
+            try:
+                _app_instance.telegram_notifier.send_error(str(e), "程序启动异常")
+            except Exception:
+                pass  # 避免通知发送失败影响程序退出
+                
         # 清理全局引用
         _app_instance = None
         return 1

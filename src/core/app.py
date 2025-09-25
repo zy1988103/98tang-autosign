@@ -254,7 +254,16 @@ class AutoSignApp:
                     f"登录过程出错: {e}，第 {retry_count} 次尝试，还剩 {remaining} 次重试机会"
                 )
 
-        self.logger.error("登录重试次数已达上限")
+        error_msg = "登录重试次数已达上限"
+        self.logger.error(error_msg)
+
+        # 发送错误通知
+        if self.telegram_notifier:
+            try:
+                self.telegram_notifier.send_error(error_msg, "登录失败")
+            except Exception as e:
+                self.logger.warning(f"发送登录失败通知时出错: {e}")
+
         return False
 
     def _perform_humanlike_activities(self) -> None:
@@ -294,13 +303,31 @@ class AutoSignApp:
                 self._record_task_result("signin", True, "签到执行成功")
                 return True
             else:
-                self.logger.error("签到失败")
+                error_msg = "签到失败"
+                self.logger.error(error_msg)
                 self._record_task_result("signin", False, "签到执行失败")
+
+                # 发送签到失败通知
+                if self.telegram_notifier:
+                    try:
+                        self.telegram_notifier.send_error(error_msg, "签到操作失败")
+                    except Exception as notify_error:
+                        self.logger.warning(f"发送签到失败通知时出错: {notify_error}")
+
                 return False
 
         except Exception as e:
-            self.logger.error(f"签到过程出错: {e}")
+            error_msg = f"签到过程出错: {e}"
+            self.logger.error(error_msg)
             self._record_task_result("signin", False, "签到过程出错", str(e))
+
+            # 发送签到异常通知
+            if self.telegram_notifier:
+                try:
+                    self.telegram_notifier.send_error(error_msg, "签到过程异常")
+                except Exception as notify_error:
+                    self.logger.warning(f"发送签到异常通知时出错: {notify_error}")
+
             return False
 
     def run(self) -> bool:
@@ -331,21 +358,57 @@ class AutoSignApp:
                 # 步骤1: 创建浏览器
                 self.logger.debug("步骤1: 创建浏览器驱动")
                 if not self._create_browser():
-                    self.logger.error("浏览器驱动创建失败")
+                    error_msg = "浏览器驱动创建失败"
+                    self.logger.error(error_msg)
+
+                    # 发送错误通知
+                    if self.telegram_notifier:
+                        try:
+                            self.telegram_notifier.send_error(
+                                error_msg, "浏览器初始化失败"
+                            )
+                        except Exception as e:
+                            self.logger.warning(f"发送浏览器初始化失败通知时出错: {e}")
+
                     return False
                 self.logger.debug("浏览器驱动创建成功")
 
                 # 步骤2: 初始化业务管理器
                 self.logger.debug("步骤2: 初始化业务管理器")
                 if not self._initialize_managers():
-                    self.logger.error("业务管理器初始化失败")
+                    error_msg = "业务管理器初始化失败"
+                    self.logger.error(error_msg)
+
+                    # 发送错误通知
+                    if self.telegram_notifier:
+                        try:
+                            self.telegram_notifier.send_error(
+                                error_msg, "系统初始化失败"
+                            )
+                        except Exception as e:
+                            self.logger.warning(
+                                f"发送业务管理器初始化失败通知时出错: {e}"
+                            )
+
                     return False
                 self.logger.debug("业务管理器初始化成功")
 
                 # 步骤3: 登录
                 self.logger.debug("步骤3: 执行登录流程")
                 if not self._login_with_retry():
-                    self.logger.error("登录失败")
+                    error_msg = "登录失败"
+                    self.logger.error(error_msg)
+
+                    # 发送登录失败摘要
+                    self._send_execution_summary(False)
+
+                    # 发送登录失败的错误通知（如果之前没有发送过）
+                    if self.telegram_notifier:
+                        try:
+                            self.telegram_notifier.send_error(error_msg, "程序执行失败")
+                        except Exception as e:
+                            self.logger.warning(f"发送登录失败通知时出错: {e}")
+
                     return False
                 self.logger.debug("登录流程完成")
 
@@ -356,7 +419,19 @@ class AutoSignApp:
                 # 步骤5: 签到
                 self.logger.debug("步骤5: 执行签到流程")
                 if not self._perform_signin():
-                    self.logger.error("签到失败")
+                    error_msg = "签到失败"
+                    self.logger.error(error_msg)
+
+                    # 发送签到失败摘要
+                    self._send_execution_summary(False)
+
+                    # 发送签到失败的错误通知
+                    if self.telegram_notifier:
+                        try:
+                            self.telegram_notifier.send_error(error_msg, "签到执行失败")
+                        except Exception as e:
+                            self.logger.warning(f"发送签到失败通知时出错: {e}")
+
                     return False
 
                 self.logger.info("程序执行完成")
