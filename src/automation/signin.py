@@ -94,6 +94,12 @@ class SignInManager:
         try:
             self.logger.debug("开始检查登录状态")
 
+            # 首先检查是否有登录错误消息
+            error_message = self.check_login_error_message()
+            if error_message:
+                self.logger.error(f"登录失败，错误信息: {error_message}")
+                return False
+
             username_selectors = [
                 f"//strong[contains(text(), '{self.username}')]",
                 f"//a[contains(text(), '{self.username}')]",
@@ -137,6 +143,73 @@ class SignInManager:
         except Exception as e:
             self.logger.warning(f"检查登录状态失败: {e}")
             return False
+
+    def check_login_error_message(self) -> Optional[str]:
+        """
+        检查登录错误消息
+
+        Returns:
+            错误消息文本，如果没有错误则返回None
+        """
+        try:
+            # 检查页面源代码中的JavaScript错误处理
+            page_source = self.driver.page_source
+
+            # 检查密码错误次数过多的提示
+            if "密码错误次数过多" in page_source:
+                import re
+
+                # 提取具体的错误消息
+                error_pattern = r"errorhandle_login\('([^']+)'"
+                match = re.search(error_pattern, page_source)
+                if match:
+                    error_msg = match.group(1)
+                    self.logger.warning(f"检测到账号锁定: {error_msg}")
+                    return error_msg
+                return "密码错误次数过多，账号已被临时锁定"
+
+            # 检查其他常见的登录错误消息
+            error_indicators = [
+                "用户名或密码错误",
+                "账号已被禁用",
+                "验证码错误",
+                "安全提问答案错误",
+                "登录失败",
+                "请重新登录",
+            ]
+
+            for error_text in error_indicators:
+                if error_text in page_source:
+                    return error_text
+
+            # 检查弹窗中的错误消息
+            error_selectors = [
+                "#ntcwin .pc_inner i",  # 错误弹窗
+                "#returnmessage_Luu4S",  # 登录返回消息
+                ".alert_error",  # 错误提示
+                ".error",  # 通用错误
+            ]
+
+            for selector in error_selectors:
+                try:
+                    error_element = self.element_finder.find_by_selectors(
+                        [selector], timeout=1
+                    )
+                    if error_element and error_element.text.strip():
+                        error_text = error_element.text.strip()
+                        if any(
+                            keyword in error_text
+                            for keyword in ["错误", "失败", "禁用"]
+                        ):
+                            return error_text
+                except:
+                    continue
+
+            return None
+
+        except Exception as e:
+            self.logger.debug(f"检查登录错误消息时出错: {e}")
+            return None
 
     def fill_login_form(self) -> bool:
         """
@@ -322,12 +395,20 @@ class SignInManager:
 
             # 验证登录结果
             self.logger.debug("验证登录结果")
-            if self.check_login_status():
+            login_result = self.check_login_status()
+            if login_result:
                 self.logger.info("登录成功")
                 return True
             else:
-                self.logger.warning("登录失败")
-                return False
+                # 检查是否是账号锁定
+                error_message = self.check_login_error_message()
+                if error_message and "密码错误次数过多" in error_message:
+                    self.logger.error(f"账号被锁定: {error_message}")
+                    # 如果是账号锁定，不要继续重试，直接返回失败
+                    raise Exception(f"账号锁定: {error_message}")
+                else:
+                    self.logger.warning("登录失败")
+                    return False
 
         except Exception as e:
             self.logger.error(f"登录过程出错: {e}")

@@ -39,6 +39,34 @@ A: 程序会自动管理Chrome驱动，如遇问题：
 pip install --upgrade selenium webdriver-manager
 ```
 
+### Q: Chrome无法显示中文字符导致登录失败？
+A: 这是非中文系统环境下的常见问题，已通过以下方式解决：
+
+**GitHub Actions环境**：
+- 自动安装中文字体包 (Noto Sans CJK SC)
+- 配置Chrome中文字体偏好设置
+- 设置UTF-8编码环境
+
+**本地环境**：
+- Windows: 通常自带中文字体支持
+- Linux: 需要安装中文字体包
+```bash
+# Ubuntu/Debian
+sudo apt-get install fonts-noto-cjk fonts-noto-cjk-extra
+sudo fc-cache -fv
+
+# CentOS/RHEL
+sudo yum install google-noto-cjk-fonts
+```
+
+**症状识别**：
+- 登录时找不到"登录"按钮
+- 年龄验证页面无法找到"满18岁"链接
+- 日志显示"未找到任何元素"错误
+
+**解决方案**：
+程序已自动配置Chrome使用合适的中文字体，无需手动干预。
+
 ### Q: 如何修改签到时间？
 A: 编辑 `.github/workflows/autosign.yml` 文件中的 `cron` 表达式：
 ```yaml

@@ -22,6 +22,7 @@ from ..notifications.telegram import (
     ExecutionSummary,
 )
 from ..utils.timeout_protection import TimeoutProtectionContext
+from ..utils.encoding import EncodingHelper
 
 
 class AutoSignApp:
@@ -42,6 +43,9 @@ class AutoSignApp:
 
         # 初始化日志管理器
         logging_config = self.config_manager.get_logging_config()
+        # 设置编码环境，确保CI环境兼容性
+        EncodingHelper.setup_encoding_environment()
+
         self.logger_manager = LoggerManager()
         self.logger = self.logger_manager.setup_logger(
             name=__name__,
@@ -173,9 +177,14 @@ class AutoSignApp:
                     html_path = os.path.join(
                         debug_dir, f"error_source_{timestamp}.html"
                     )
-                    with open(html_path, "w", encoding="utf-8") as f:
-                        f.write(self.browser_manager.driver.page_source)
-                    self.logger.debug(f"错误HTML源代码已保存: {html_path}")
+                    page_source = self.browser_manager.driver.page_source
+
+                    # 使用编码助手安全地保存HTML源代码
+                    if EncodingHelper.safe_write_text(html_path, page_source):
+                        self.logger.debug(f"错误HTML源代码已保存: {html_path}")
+                    else:
+                        self.logger.warning("错误HTML源代码保存失败")
+                        html_path = None
                 except Exception as e:
                     self.logger.warning(f"捕获错误HTML源代码失败: {e}")
                     html_path = None
@@ -341,6 +350,12 @@ class AutoSignApp:
             except Exception as e:
                 retry_count = self.retry_manager.get_retry_count(operation)
                 remaining = self.retry_manager.get_remaining_retries(operation)
+
+                # 检查是否是账号锁定错误
+                if "账号锁定" in str(e) or "密码错误次数过多" in str(e):
+                    self.logger.error(f"账号被锁定，停止重试: {e}")
+                    return False  # 账号锁定时不继续重试
+
                 self.logger.error(
                     f"登录过程出错: {e}，第 {retry_count} 次尝试，还剩 {remaining} 次重试机会"
                 )

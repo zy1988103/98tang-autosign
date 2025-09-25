@@ -64,6 +64,14 @@ class ConfigManager:
             }
         )
 
+        # 登录安全配置 - 默认启用
+        self._config.update(
+            {
+                "detect_account_lockout": True,
+                "lockout_wait_minutes": 15,
+            }
+        )
+
         # 拟人化行为配置
         self._config.update(
             {
