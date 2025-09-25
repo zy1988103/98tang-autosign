@@ -44,6 +44,8 @@
 ### 方式一：GitHub Actions（推荐）
 
 > ✅ **零成本 | 免维护 | 自动运行**
+> 📖 **更详细的教程与配置指南** | 请访问我的博客查看  
+[[Dooong博客]利用Github Action部署98tang论坛自动签到详细教程](https://dooo.ng/archives/98tang-auto-sign)
 
 <details>
 <summary><b>点击展开详细配置步骤</b></summary>
