@@ -9,7 +9,7 @@ import logging
 import requests
 import os
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from dataclasses import dataclass, asdict
 
 
@@ -95,6 +95,19 @@ class ExecutionSummary:
                 message += f"  _{details_escaped}_\n"
 
         return message.strip()
+
+
+@dataclass
+class NotificationData:
+    """通知数据包"""
+
+    message: str  # 主要消息内容
+    attachments: List[Dict[str, Any]] = None  # 附件列表
+    parse_mode: str = "MarkdownV2"  # 消息解析模式
+
+    def __post_init__(self):
+        if self.attachments is None:
+            self.attachments = []
 
 
 class TelegramNotifier:
@@ -504,3 +517,271 @@ class TelegramNotifier:
         """
         caption = f'📄 错误HTML源代码\n\n⏰ 捕获时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
         return self.send_document(html_path, caption)
+
+    def send_batch_notification(self, notification_data: NotificationData) -> bool:
+        """
+        发送批量通知（统一发送消息和附件）
+
+        Args:
+            notification_data: 通知数据包
+
+        Returns:
+            是否发送成功（主消息发送成功即认为整体成功，附件失败不影响整体结果）
+        """
+        try:
+            # 首先发送主消息
+            success = self.send_message(
+                notification_data.message, notification_data.parse_mode
+            )
+
+            if not success:
+                self.logger.error("发送主通知消息失败")
+                return False
+
+            self.logger.info("主通知消息发送成功")
+
+            # 按顺序发送附件（附件失败不影响整体成功状态）
+            successful_attachments = 0
+            failed_attachments = 0
+
+            for attachment in notification_data.attachments:
+                attachment_type = attachment.get("type", "")
+                file_path = attachment.get("path", "")
+                caption = attachment.get("caption", "")
+
+                if not file_path:
+                    self.logger.warning(f"附件路径为空，跳过: {attachment_type}")
+                    failed_attachments += 1
+                    continue
+
+                if not os.path.exists(file_path):
+                    self.logger.warning(f"附件文件不存在，跳过: {file_path}")
+                    failed_attachments += 1
+                    continue
+
+                try:
+                    attachment_sent = False
+                    if attachment_type == "screenshot":
+                        attachment_sent = self.send_screenshot(file_path, caption)
+                    elif attachment_type == "log":
+                        attachment_sent = self.send_log_file(file_path)
+                    elif attachment_type == "html":
+                        attachment_sent = self.send_html_file(file_path)
+                    elif attachment_type == "document":
+                        attachment_sent = self.send_document(file_path, caption)
+                    else:
+                        self.logger.warning(f"未知的附件类型，跳过: {attachment_type}")
+                        failed_attachments += 1
+                        continue
+
+                    if attachment_sent:
+                        self.logger.debug(
+                            f"附件发送成功 ({attachment_type}): {file_path}"
+                        )
+                        successful_attachments += 1
+                    else:
+                        self.logger.warning(
+                            f"附件发送失败 ({attachment_type}): {file_path}"
+                        )
+                        failed_attachments += 1
+
+                except Exception as attachment_error:
+                    self.logger.warning(
+                        f"发送附件异常 ({attachment_type}: {file_path}): {attachment_error}"
+                    )
+                    failed_attachments += 1
+
+            # 记录附件发送统计
+            total_attachments = len(notification_data.attachments)
+            if total_attachments > 0:
+                self.logger.info(
+                    f"附件发送完成: {successful_attachments}/{total_attachments} 成功"
+                )
+                if failed_attachments > 0:
+                    self.logger.warning(
+                        f"有 {failed_attachments} 个附件发送失败，但主消息已成功发送"
+                    )
+
+            # 只要主消息发送成功，就认为整体成功
+            return success
+
+        except Exception as e:
+            self.logger.error(f"批量通知发送失败: {e}")
+            return False
+
+    def create_error_notification(
+        self,
+        error_message: str,
+        error_type: str = "程序错误",
+        log_file_path: Optional[str] = None,
+        screenshot_path: Optional[str] = None,
+        html_path: Optional[str] = None,
+        include_live_screenshot: bool = False,
+        live_screenshot_context: Optional[str] = None,
+    ) -> NotificationData:
+        """
+        创建错误通知数据包
+
+        Args:
+            error_message: 错误消息
+            error_type: 错误类型
+            log_file_path: 日志文件路径（可选）
+            screenshot_path: 截图文件路径（可选）
+            html_path: HTML文件路径（可选）
+            include_live_screenshot: 是否包含实时截图说明
+            live_screenshot_context: 实时截图上下文信息
+
+        Returns:
+            NotificationData: 通知数据包
+        """
+        # 转义特殊字符
+        escaped_error = self._escape_markdown_v2(error_message)
+        escaped_type = self._escape_markdown_v2(error_type)
+
+        # 构建主消息
+        message = f"""🚨 *98tang\\-autosign 错误报告*
+
+❌ *错误类型*: `{escaped_type}`
+⏰ *时间*: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`
+
+📋 *错误详情*:
+```
+{escaped_error}
+```"""
+
+        # 添加附件信息说明
+        attachments = []
+        attachment_descriptions = []
+
+        if log_file_path and os.path.exists(log_file_path):
+            attachments.append(
+                {
+                    "type": "log",
+                    "path": log_file_path,
+                    "caption": f'📄 *98tang\\-autosign 错误日志*\n\n📅 生成时间: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`',
+                }
+            )
+            attachment_descriptions.append("📄 错误日志文件")
+
+        if screenshot_path and os.path.exists(screenshot_path):
+            attachments.append(
+                {
+                    "type": "screenshot",
+                    "path": screenshot_path,
+                    "caption": f'📸 *错误截图*\n\n⏰ 捕获时间: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`',
+                }
+            )
+            attachment_descriptions.append("📸 错误截图")
+
+        if html_path and os.path.exists(html_path):
+            attachments.append(
+                {
+                    "type": "html",
+                    "path": html_path,
+                    "caption": f'📄 错误HTML源代码\n\n⏰ 捕获时间: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`',
+                }
+            )
+            attachment_descriptions.append("📄 HTML源代码")
+
+        # 记录附件处理结果
+        if attachments:
+            self.logger.debug(f"错误通知准备了 {len(attachments)} 个附件")
+        else:
+            self.logger.debug("错误通知没有附件")
+
+        if include_live_screenshot and live_screenshot_context:
+            escaped_context = self._escape_markdown_v2(live_screenshot_context)
+            attachment_descriptions.append(f"📱 实时截图 \\({escaped_context}\\)")
+
+        # 如果有附件，添加附件说明
+        if attachment_descriptions:
+            message += f"\n\n📎 *附件内容*:\n"
+            for desc in attachment_descriptions:
+                message += f"• {desc}\n"
+
+        return NotificationData(
+            message=message.strip(), attachments=attachments, parse_mode="MarkdownV2"
+        )
+
+    def create_success_notification(
+        self,
+        summary: ExecutionSummary,
+        log_file_path: Optional[str] = None,
+        include_live_screenshot: bool = False,
+        live_screenshot_context: Optional[str] = None,
+    ) -> NotificationData:
+        """
+        创建成功通知数据包
+
+        Args:
+            summary: 执行摘要
+            log_file_path: 日志文件路径（可选）
+            include_live_screenshot: 是否包含实时截图说明
+            live_screenshot_context: 实时截图上下文信息
+
+        Returns:
+            NotificationData: 通知数据包
+        """
+        # 使用现有的摘要格式作为主消息
+        message = summary.to_message()
+
+        # 添加附件
+        attachments = []
+        attachment_descriptions = []
+
+        # 安全地处理日志文件附件
+        if log_file_path:
+            try:
+                if os.path.exists(log_file_path):
+                    attachments.append(
+                        {
+                            "type": "log",
+                            "path": log_file_path,
+                            "caption": f'📄 *98tang\\-autosign 日志*\n\n📅 生成时间: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`',
+                        }
+                    )
+                    attachment_descriptions.append("📄 执行日志文件")
+                else:
+                    self.logger.warning(f"日志文件不存在，跳过附件: {log_file_path}")
+            except Exception as e:
+                self.logger.warning(f"处理日志文件附件时出错: {e}")
+
+        if include_live_screenshot and live_screenshot_context:
+            escaped_context = self._escape_markdown_v2(live_screenshot_context)
+            attachment_descriptions.append(f"📱 成功截图 \\({escaped_context}\\)")
+
+        # 如果有附件，添加附件说明
+        if attachment_descriptions:
+            message += f"\n\n📎 *附件内容*:\n"
+            for desc in attachment_descriptions:
+                message += f"• {desc}\n"
+
+        return NotificationData(
+            message=message.strip(), attachments=attachments, parse_mode="MarkdownV2"
+        )
+
+    def _escape_markdown_v2(self, text: str) -> str:
+        """转义MarkdownV2格式的特殊字符"""
+        special_chars = [
+            "_",
+            "*",
+            "[",
+            "]",
+            "(",
+            ")",
+            "~",
+            "`",
+            ">",
+            "#",
+            "+",
+            "-",
+            "=",
+            "|",
+            "{",
+            "}",
+            ".",
+            "!",
+        ]
+        for char in special_chars:
+            text = text.replace(char, f"\\{char}")
+        return text

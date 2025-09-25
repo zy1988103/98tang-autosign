@@ -20,6 +20,7 @@ from ..notifications.telegram import (
     TelegramNotifier,
     TaskResult,
     ExecutionSummary,
+    NotificationData,
 )
 from ..utils.timeout_protection import TimeoutProtectionContext
 from ..utils.encoding import EncodingHelper
@@ -196,49 +197,79 @@ class AutoSignApp:
         return screenshot_path, html_path
 
     def _send_error_with_log(self, error_message: str, error_title: str) -> None:
-        """发送错误通知，并根据配置发送日志文件和调试文件"""
+        """发送统一的错误通知（包含所有相关文件和信息）"""
         if not self.telegram_notifier:
             return
 
         try:
+            # 准备所有文件路径
+            log_file_path = None
+            screenshot_path = None
+            html_path = None
+            include_live_screenshot = False
+            live_screenshot_context = None
+
             # 捕获调试文件
-            screenshot_path, html_path = self._capture_debug_files()
-
-            # 发送错误通知
-            self.telegram_notifier.send_error(error_message, error_title)
-
-            # 如果启用了日志推送，则发送调试文件
             if self.config_manager.get("TELEGRAM_SEND_LOG_FILE", False):
-                # 发送日志文件
+                screenshot_path, html_path = self._capture_debug_files()
+
+                # 获取日志文件
                 current_log_file = self.logger_manager.get_current_log_file()
                 if current_log_file and os.path.exists(current_log_file):
-                    try:
-                        self.telegram_notifier.send_log_file(current_log_file)
-                        self.logger.debug("错误日志文件已发送到Telegram")
-                    except Exception as log_error:
-                        self.logger.warning(f"发送错误日志文件失败: {log_error}")
+                    log_file_path = current_log_file
 
-                # 发送截图
-                if screenshot_path and os.path.exists(screenshot_path):
-                    try:
-                        self.telegram_notifier.send_screenshot(screenshot_path)
-                        self.logger.debug("错误截图已发送到Telegram")
-                    except Exception as screenshot_error:
-                        self.logger.warning(f"发送错误截图失败: {screenshot_error}")
+            # 检查是否需要实时截图
+            if (
+                self.config_manager.get("TELEGRAM_SEND_SCREENSHOT", False)
+                and hasattr(self, "browser_manager")
+                and self.browser_manager
+                and hasattr(self.browser_manager, "driver")
+                and self.browser_manager.driver
+            ):
+                include_live_screenshot = True
+                live_screenshot_context = f"执行过程中发生错误: {error_title}"
 
-                # 发送HTML源代码文件
-                if html_path and os.path.exists(html_path):
-                    try:
-                        self.telegram_notifier.send_html_file(html_path)
-                        self.logger.debug("错误HTML源代码已发送到Telegram")
-                    except Exception as html_error:
-                        self.logger.warning(f"发送错误HTML源代码失败: {html_error}")
+            # 创建统一的错误通知数据包
+            notification_data = self.telegram_notifier.create_error_notification(
+                error_message=error_message,
+                error_type=error_title,
+                log_file_path=log_file_path,
+                screenshot_path=screenshot_path,
+                html_path=html_path,
+                include_live_screenshot=include_live_screenshot,
+                live_screenshot_context=live_screenshot_context,
+            )
+
+            # 发送统一通知
+            success = self.telegram_notifier.send_batch_notification(notification_data)
+
+            if success:
+                self.logger.debug("统一错误通知已发送到Telegram")
+            else:
+                self.logger.warning("统一错误通知发送失败")
+
+            # 发送实时截图（如果启用）
+            if include_live_screenshot:
+                try:
+                    screenshot_helper = ScreenshotHelper(
+                        telegram_notifier=self.telegram_notifier
+                    )
+                    screenshot_helper.capture_and_send_screenshot(
+                        driver=self.browser_manager.driver,
+                        scenario="execution_error",
+                        context=live_screenshot_context,
+                    )
+                    self.logger.debug("实时错误截图已发送到Telegram")
+                except Exception as live_screenshot_error:
+                    self.logger.warning(
+                        f"发送实时错误截图失败: {live_screenshot_error}"
+                    )
 
         except Exception as notify_error:
             self.logger.warning(f"发送错误通知时出错: {notify_error}")
 
     def _send_execution_summary(self, overall_success: bool) -> None:
-        """发送执行摘要"""
+        """发送统一的执行摘要通知（包含所有相关文件和信息）"""
         if not self.telegram_notifier or not self.execution_start_time:
             return
 
@@ -266,37 +297,56 @@ class AutoSignApp:
                 overall_success=overall_success,
             )
 
-            # 发送摘要
-            self.telegram_notifier.send_summary(summary)
-            self.logger.debug("执行摘要已发送到Telegram")
-
-            # 发送执行成功截图（在成功时）
-            if overall_success and self.config_manager.get(
-                "TELEGRAM_SEND_SCREENSHOT", False
-            ):
-                try:
-                    screenshot_helper = ScreenshotHelper(
-                        driver=self.browser_manager.driver,
-                        config=self.config_manager,
-                        logger=self.logger,
-                    )
-                    screenshot_helper.send_success_screenshot(self.telegram_notifier)
-                    self.logger.debug("执行成功截图已发送到Telegram")
-                except Exception as screenshot_error:
-                    self.logger.warning(f"发送执行成功截图失败: {screenshot_error}")
+            # 准备附件信息
+            log_file_path = None
+            include_live_screenshot = False
+            live_screenshot_context = None
 
             # 只在执行成功时发送日志文件（避免与错误通知重复推送）
-            # 失败时的日志文件会通过 _send_error_with_log 方法发送
             if overall_success and self.config_manager.get(
                 "TELEGRAM_SEND_LOG_FILE", False
             ):
                 current_log_file = self.logger_manager.get_current_log_file()
                 if current_log_file and os.path.exists(current_log_file):
-                    try:
-                        self.telegram_notifier.send_log_file(current_log_file)
-                        self.logger.debug("成功日志文件已发送到Telegram")
-                    except Exception as log_error:
-                        self.logger.warning(f"发送成功日志文件失败: {log_error}")
+                    log_file_path = current_log_file
+
+            # 检查是否需要成功截图
+            if overall_success and self.config_manager.get(
+                "TELEGRAM_SEND_SCREENSHOT", False
+            ):
+                include_live_screenshot = True
+                live_screenshot_context = "签到任务执行成功"
+
+            # 创建统一的成功通知数据包
+            notification_data = self.telegram_notifier.create_success_notification(
+                summary=summary,
+                log_file_path=log_file_path,
+                include_live_screenshot=include_live_screenshot,
+                live_screenshot_context=live_screenshot_context,
+            )
+
+            # 发送统一通知
+            success = self.telegram_notifier.send_batch_notification(notification_data)
+
+            if success:
+                self.logger.debug("统一执行摘要已发送到Telegram")
+            else:
+                self.logger.warning("统一执行摘要发送失败")
+
+            # 发送实时截图（如果启用且成功）
+            if include_live_screenshot:
+                try:
+                    screenshot_helper = ScreenshotHelper(
+                        telegram_notifier=self.telegram_notifier
+                    )
+                    screenshot_helper.capture_and_send_screenshot(
+                        driver=self.browser_manager.driver,
+                        scenario="execution_success",
+                        context=live_screenshot_context,
+                    )
+                    self.logger.debug("执行成功截图已发送到Telegram")
+                except Exception as screenshot_error:
+                    self.logger.warning(f"发送执行成功截图失败: {screenshot_error}")
 
         except Exception as e:
             self.logger.warning(f"发送Telegram执行摘要失败: {e}")
