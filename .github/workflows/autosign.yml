@@ -1,0 +1,106 @@
+name: 98tang Auto Sign-in
+
+on:
+  schedule:
+    # 每天北京时间上午9点执行 (UTC+8 = UTC+0-8, 所以9点对应UTC 1点)
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    # 允许手动触发
+
+jobs:
+  autosign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: 验证必需配置
+      run: |
+        if [ -z "${{ secrets.SITE_USERNAME }}" ] || [ -z "${{ secrets.SITE_PASSWORD }}" ]; then
+          echo "❌ 缺少必需的 Secrets 配置"
+          echo "请在仓库设置中添加 SITE_USERNAME 和 SITE_PASSWORD"
+          exit 1
+        fi
+        echo "✅ 配置验证通过"
+        
+    - name: 执行自动签到
+      env:
+        # 必需配置
+        SITE_USERNAME: ${{ secrets.SITE_USERNAME }}
+        SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        
+        # 安全提问配置
+        ENABLE_SECURITY_QUESTION: ${{ vars.ENABLE_SECURITY_QUESTION || 'false' }}
+        SECURITY_QUESTION: ${{ secrets.SECURITY_QUESTION }}
+        SECURITY_ANSWER: ${{ secrets.SECURITY_ANSWER }}
+        
+        # 核心功能配置
+        BASE_URL: ${{ vars.BASE_URL || 'https://www.sehuatang.org' }}
+        ENABLE_CHECKIN: ${{ vars.ENABLE_CHECKIN || 'true' }}
+        
+        # 拟人化行为配置
+        ENABLE_REPLY: ${{ vars.ENABLE_REPLY || 'false' }}
+        REPLY_COUNT: ${{ vars.REPLY_COUNT || '2' }}
+        ENABLE_RANDOM_BROWSING: ${{ vars.ENABLE_RANDOM_BROWSING || 'false' }}
+        BROWSE_PAGE_COUNT: ${{ vars.BROWSE_PAGE_COUNT || '3' }}
+        COMMENT_INTERVAL: ${{ vars.COMMENT_INTERVAL || '15' }}
+        WAIT_AFTER_LOGIN: ${{ vars.WAIT_AFTER_LOGIN || '5' }}
+        REPLY_MESSAGES: ${{ vars.REPLY_MESSAGES || '感谢分享资源，收藏了;好资源收藏了，谢谢楼主;感谢楼主的精彩分享;谢谢分享，非常实用;好内容，支持一下楼主' }}
+        
+        # 延迟优化配置
+        TIMING_MULTIPLIER: ${{ vars.TIMING_MULTIPLIER || '1.0' }}
+        ENABLE_SMART_TIMING: ${{ vars.ENABLE_SMART_TIMING || 'true' }}
+        
+        # Telegram通知配置
+        ENABLE_TELEGRAM_NOTIFICATION: ${{ vars.ENABLE_TELEGRAM_NOTIFICATION || 'false' }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_PROXY_URL: ${{ secrets.TELEGRAM_PROXY_URL }}
+        TELEGRAM_SEND_LOG_FILE: ${{ vars.TELEGRAM_SEND_LOG_FILE || 'false' }}
+        
+        # 系统配置（强制设置）
+        HEADLESS: 'true'  # Github Action 强制无头模式
+        LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
+        MAX_LOG_FILES: ${{ vars.MAX_LOG_FILES || '7' }}
+        MAX_RETRIES: ${{ vars.MAX_RETRIES || '3' }}
+        TIMEOUT_MINUTES: ${{ vars.TIMEOUT_MINUTES || '5' }}
+        
+      run: |
+        echo "🚀 开始执行自动签到..."
+        echo "📅 执行时间: $(date '+%Y-%m-%d %H:%M:%S') UTC"
+        echo "🌏 北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+        echo "👤 用户名: $(echo $SITE_USERNAME | head -c 2)****$(echo $SITE_USERNAME | tail -c 3)"
+        echo "🔗 目标网站: $BASE_URL"
+        echo ""
+        
+        python main.py
+        
+    - name: 上传日志文件
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: autosign-logs-${{ github.run_number }}
+        path: logs/
+        retention-days: 30
+        
+    - name: 执行结果通知
+      if: always()
+      run: |
+        if [ $? -eq 0 ]; then
+          echo "✅ 自动签到执行成功"
+        else
+          echo "❌ 自动签到执行失败"
+          echo "请查看日志了解详细信息"
+        fi
