@@ -1,13 +1,13 @@
 <div align="center">
 
-# 🎯 98tang AutoSign
+# 98tang AutoSign
 
 **智能化98堂论坛自动签到系统 | 支持云端部署 | 拟人化操作**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/) [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-supported-green.svg)](https://github.com/features/actions) [![Selenium](https://img.shields.io/badge/Selenium-4.15+-orange.svg)](https://selenium-python.readthedocs.io/) 
 [![GitHub stars](https://img.shields.io/github/stars/WizisCool/98tang-autosign?style=social)](https://github.com/WizisCool/98tang-autosign/stargazers) [![GitHub forks](https://img.shields.io/github/forks/WizisCool/98tang-autosign?style=social)](https://github.com/WizisCool/98tang-autosign/network/members)
 
-[📖 文档](#-文档) • [🚀 快速开始](#-快速开始) • [⚙️ 配置](#️-配置参数) • [🤝 贡献](#-贡献)
+[文档](#文档) • [快速开始](#快速开始) • [配置](#配置参数) • [贡献](#贡献)
 
 </div>
 
@@ -18,40 +18,40 @@
 
 ```
 98tang-autosign/
-├── 📁 .github/workflows/    # GitHub Actions 工作流
+├── .github/workflows/      # GitHub Actions 工作流
 │   └── autosign.yml         # 自动签到工作流配置
-├── 📁 src/                  # 核心源代码
-│   ├── 📁 automation/       # 自动化逻辑模块
-│   ├── 📁 browser/          # 浏览器操作封装
-│   ├── 📁 core/             # 核心功能模块
-│   ├── 📁 notifications/    # 通知系统
-│   └── 📁 utils/            # 工具函数库
-├── 📁 docs/                 # 项目文档
-│   ├── installation.md     # 详细安装指南
-│   ├── configuration.md    # 完整配置文档
-│   ├── faq.md              # 常见问题解答
-│   └── contributing.md     # 贡献者指南
-├── 📄 main.py              # 程序入口文件
-├── 📄 config.env.example   # 配置文件模板
-├── 📄 requirements.txt     # Python依赖列表
-└── 📄 README.md           # 项目说明文档
+├── src/                     # 核心源代码
+│   ├── automation/          # 自动化逻辑模块
+│   ├── browser/             # 浏览器操作封装
+│   ├── core/                # 核心功能模块
+│   ├── notifications/       # 通知系统
+│   └── utils/               # 工具函数库
+├── docs/                    # 项目文档
+│   ├── installation.md      # 详细安装指南
+│   ├── configuration.md     # 完整配置文档
+│   ├── faq.md               # 常见问题解答
+│   └── contributing.md      # 贡献者指南
+├── main.py                  # 程序入口文件
+├── config.env.example       # 配置文件模板
+├── requirements.txt         # Python依赖列表
+└── README.md                # 项目说明文档
 ```
 
 ---
 
 ## 🚀 快速开始
 
-### 🎯 方式一：GitHub Actions（推荐）
+### 方式一：GitHub Actions（推荐）
 
 > ✅ **零成本 | 免维护 | 自动运行**
 
 <details>
-<summary>🔧 <b>点击展开详细配置步骤</b></summary>
+<summary><b>点击展开详细配置步骤</b></summary>
 
-#### 1️⃣ Fork 仓库
+#### 1. Fork 仓库
 点击页面右上角 **Fork** 按钮，将项目复制到您的账号下
 
-#### 2️⃣ 配置环境变量（推荐方式）
+#### 2. 配置环境变量（推荐方式）
 1. 进入您的仓库 → `Settings` → `Environments`
 2. 创建新环境，名称：`98tang-autosign`
 3. 在 Environment secrets 中添加：
@@ -60,23 +60,23 @@
    SITE_PASSWORD     # 您的98tang密码
    ```
 
-#### 3️⃣ 启用工作流
+#### 3. 启用工作流
 1. 进入 `Actions` 标签页
 2. 点击 `98tang Auto Sign-in` 工作流
 3. 点击 `Enable workflow` 启用
 4. 可选：点击 `Run workflow` 立即测试
 
-#### 4️⃣ 验证配置
+#### 4. 验证配置
 查看 Actions 运行日志：
 - ✅ `Environment secrets模式: 98tang-autosign` - 配置成功
 - ⚠️ `Repository secrets模式 - 回退模式` - 使用备用配置
 
 </details>
 
-### 🖥️ 方式二：本地运行
+### 方式二：本地运行
 
 <details>
-<summary>💻 <b>点击展开本地部署步骤</b></summary>
+<summary><b>点击展开本地部署步骤</b></summary>
 
 #### 环境要求
 - Python 3.7+ 
@@ -122,18 +122,16 @@ python main.py
 - 🤖 **拟人化行为**: 智能回复、浏览行为
 - ⚡ **高级设置**: 性能调优、调试选项
 
-> 📖 **详细配置文档**: [configuration.md](docs/configuration.md)  
+> **详细配置文档**: [configuration.md](docs/configuration.md)  
 > 包含所有参数的详细说明、默认值、示例和使用注意事项
 
-
-
-### 💡 配置方式对比
+### 配置方式对比
 
 | 配置方式 | 安全性 | 易用性 | 推荐度 | 适用场景 |
 |----------|--------|--------|--------|----------|
-| **Environment Secrets** | 🔒🔒🔒 | ⭐⭐⭐ | ✅ **推荐** | 因为是我用的 |
-| **Repository Secrets** | 🔒🔒 | ⭐⭐⭐⭐ | ✅ 备用 | 个人项目，快速配置 |
-| **本地配置文件** | 🔒 | ⭐⭐⭐⭐⭐ | 💻 开发 | 本地开发部署 |
+| **Environment Secrets** | 高 | 中等 | **推荐** | 生产环境使用 |
+| **Repository Secrets** | 中等 | 高 | 备用 | 个人项目，快速配置 |
+| **本地配置文件** | 低 | 最高 | 开发 | 本地开发部署 |
 
 ---
 
@@ -148,7 +146,7 @@ python main.py
 
 ---
 
-## 📊 使用统计
+## 使用统计
 
 <div align="center">
 
@@ -196,7 +194,7 @@ python main.py
 - 🔧 **代码贡献**: [提交PR](https://github.com/WizisCool/98tang-autosign/pulls)
 - 📖 **文档改进**: 帮助完善文档
 
-### 👥 贡献者
+### 贡献者
 
 感谢所有为项目做出贡献的开发者！
 
@@ -206,13 +204,13 @@ python main.py
 
 ---
 
-## 📄 许可证
+## 许可证
 
 本项目采用 [MIT 许可证](LICENSE) - 查看 LICENSE 文件了解详情
 
 ---
 
-## ⚠️ 免责声明
+## 免责声明
 
 本工具仅供学习和研究使用。使用者应遵守目标网站的使用条款和相关法律法规。开发者不对使用本工具产生的任何后果承担责任。
 
@@ -220,7 +218,7 @@ python main.py
 
 <div align="center">
 
-**如果这个项目对您有帮助，请给个 ⭐ Star 支持一下！**
+**如果这个项目对您有帮助，请给个 Star 支持一下！**
 
 [![Star History Chart](https://api.star-history.com/svg?repos=WizisCool/98tang-autosign&type=Date)](https://star-history.com/#WizisCool/98tang-autosign&Date)
 
