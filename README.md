@@ -220,7 +220,7 @@ python main.py
 
 **如果这个项目对您有帮助，请给个 Star 支持一下！**
 
-[![Star History Chart](https://api.star-history.com/svg?repos=WizisCool/98tang-autosign&type=Date)](https://star-history.com/#WizisCool/98tang-autosign&Date)
+[![Star History Chart](https://www.star-history.com/#WizisCool/98tang-autosign&Date)](https://www.star-history.com/#WizisCool/98tang-autosign&Date)
 
 ---
 
