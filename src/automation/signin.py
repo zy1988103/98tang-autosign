@@ -620,12 +620,28 @@ class SignInManager:
             是否签到成功
         """
         try:
-            # 查找红色签到按钮
+            # 扩展签到按钮选择器，支持button和a标签
             sign_button_selectors = [
+                # 原有的a标签选择器
                 "div.ddpc_sign_btna a.ddpc_sign_btn_red",
                 "a.ddpc_sign_btn_red",
                 'a[class*="sign_btn"]',
                 'a[href*="sign"]',
+                # 新增button标签选择器
+                'button[name="signsubmit"]',
+                'button[type="submit"][name="signsubmit"]',
+                'button.pn.pnc[name="signsubmit"]',
+                'button[class*="pn"][class*="pnc"]',
+                'button[type="submit"]',
+                'input[type="submit"][name="signsubmit"]',
+                'input[type="button"][name="signsubmit"]',
+                # XPath选择器
+                '//button[@name="signsubmit"]',
+                '//button[@type="submit" and @name="signsubmit"]',
+                '//button[contains(@class, "pn") and contains(@class, "pnc")]',
+                '//button[contains(text(), "签到")]',
+                '//input[@type="submit" and @name="signsubmit"]',
+                '//input[@type="button" and @name="signsubmit"]',
             ]
 
             sign_button = self.element_finder.find_clickable_by_selectors(
@@ -639,16 +655,37 @@ class SignInManager:
             button_text = sign_button.text.strip()
             button_class = sign_button.get_attribute("class") or ""
             button_href = sign_button.get_attribute("href") or ""
+            button_name = sign_button.get_attribute("name") or ""
+            button_type = sign_button.get_attribute("type") or ""
+            button_tag = sign_button.tag_name.lower()
 
             self.logger.debug(
-                f"找到签到按钮 - 文本: '{button_text}', class: '{button_class}', href: '{button_href}'"
+                f"找到签到按钮 - 标签: '{button_tag}', 文本: '{button_text}', "
+                f"class: '{button_class}', href: '{button_href}', "
+                f"name: '{button_name}', type: '{button_type}'"
             )
 
             # 确保这是一个有效的签到按钮
-            if "ddpc_sign_btn_red" in button_class or any(
-                keyword in button_text for keyword in ["签到", "点击"]
-            ):
-                self.logger.info(f"开始点击签到按钮: '{button_text}'")
+            is_valid_button = (
+                # 原有的a标签判断
+                "ddpc_sign_btn_red" in button_class
+                or
+                # 新增button标签判断
+                button_name == "signsubmit"
+                or (button_type == "submit" and button_name == "signsubmit")
+                or ("pn" in button_class and "pnc" in button_class)
+                or
+                # 文本内容判断
+                any(keyword in button_text for keyword in ["签到", "点击", "Sign"])
+                or
+                # href判断
+                "sign" in button_href.lower()
+            )
+
+            if is_valid_button:
+                self.logger.info(
+                    f"开始点击签到按钮: '{button_text}' (标签: {button_tag}, name: {button_name})"
+                )
                 BrowserHelper.safe_click(self.driver, sign_button, self.logger)
                 TimingManager.smart_wait(
                     TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger
@@ -662,7 +699,9 @@ class SignInManager:
                     self.logger.error("❌ 签到验证失败")
                     return False
             else:
-                self.logger.warning(f"按钮不符合签到条件: '{button_text}'")
+                self.logger.warning(
+                    f"按钮不符合签到条件: '{button_text}' (标签: {button_tag}, name: {button_name})"
+                )
                 return False
 
         except Exception as e:
@@ -716,6 +755,7 @@ class SignInManager:
     def _verify_signin_success(self, max_retries: int = 3) -> bool:
         """
         验证签到是否成功，检测系统繁忙状态并重试
+        如果刷新后仍显示未签到，重新执行签到流程
 
         Args:
             max_retries: 最大重试次数
@@ -754,20 +794,38 @@ class SignInManager:
                 elif signin_status == "need_signin":
                     self.logger.warning(f"签到状态仍显示未签到 (第 {attempt + 1} 次)")
                     if attempt < max_retries - 1:
-                        wait_time = (attempt + 1) * 3  # 递增等待时间：3秒、6秒、9秒
-                        self.logger.info(f"等待 {wait_time} 秒后重试...")
+                        # 如果仍显示未签到，重新执行签到流程
+                        self.logger.info("重新执行签到流程...")
+                        wait_time = (attempt + 1) * 2  # 等待时间：2秒、4秒、6秒
+                        self.logger.info(f"等待 {wait_time} 秒后重新签到...")
                         TimingManager.smart_wait(wait_time, 1.0, self.logger)
-                        continue
+
+                        # 重新执行签到操作
+                        if self._perform_signin_action():
+                            self.logger.info("重新签到成功")
+                            return True
+                        else:
+                            self.logger.warning("重新签到失败，继续重试")
+                            continue
                     else:
                         self.logger.error("签到验证失败，状态仍显示未签到")
                         return False
                 else:
                     self.logger.warning(f"无法确定签到状态 (第 {attempt + 1} 次)")
                     if attempt < max_retries - 1:
-                        wait_time = (attempt + 1) * 2  # 递增等待时间：2秒、4秒、6秒
-                        self.logger.info(f"等待 {wait_time} 秒后重试...")
+                        # 如果无法确定状态，也尝试重新执行签到流程
+                        self.logger.info("状态不明确，尝试重新执行签到流程...")
+                        wait_time = (attempt + 1) * 2  # 等待时间：2秒、4秒、6秒
+                        self.logger.info(f"等待 {wait_time} 秒后重新签到...")
                         TimingManager.smart_wait(wait_time, 1.0, self.logger)
-                        continue
+
+                        # 重新执行签到操作
+                        if self._perform_signin_action():
+                            self.logger.info("重新签到成功")
+                            return True
+                        else:
+                            self.logger.warning("重新签到失败，继续重试")
+                            continue
                     else:
                         self.logger.error("签到验证失败，无法确定状态")
                         return False
