@@ -543,37 +543,67 @@ class SignInManager:
             BrowserHelper.safe_click(self.driver, sign_nav_link, self.logger)
             TimingManager.smart_wait(TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger)
 
-            # 检查签到状态
+            # 检查签到状态 - 使用精准的CSS选择器
             self.logger.debug("检查签到状态，查找签到按钮区域")
-            sign_area_selectors = [
-                ".ddpc_sign_btna",
-                'div[class*="sign_btn"]',
-                ".sign-area",
-            ]
 
-            sign_area = self.element_finder.find_by_selectors(sign_area_selectors)
-            if sign_area:
-                sign_area_text = sign_area.text.strip()
-                self.logger.debug(f"签到区域文本: {sign_area_text}")
+            # 首先检查是否已签到 - 查找灰色的"今日已签到"按钮
+            already_signed_selector = "div.ddpc_sign_btna a.ddpc_sign_btn_grey"
+            already_signed_element = self.element_finder.find_by_selector(
+                already_signed_selector
+            )
 
-                # 如果按钮文本包含"未签到"或"点击签到"，说明还未签到
-                if any(keyword in sign_area_text for keyword in ["未签到", "点击签到"]):
+            if already_signed_element:
+                element_text = already_signed_element.text.strip()
+                self.logger.debug(f"找到签到状态元素: {element_text}")
+
+                if "今日已签到" in element_text:
+                    self.logger.info(
+                        "✅ 检测到今日已签到状态 (精准检测: ddpc_sign_btn_grey)"
+                    )
+                    return True
+
+            # 检查是否存在红色的签到按钮
+            sign_button_selector = "div.ddpc_sign_btna a.ddpc_sign_btn_red"
+            sign_button_element = self.element_finder.find_by_selector(
+                sign_button_selector
+            )
+
+            if sign_button_element:
+                button_text = sign_button_element.text.strip()
+                self.logger.debug(f"找到签到按钮: {button_text}")
+
+                if any(keyword in button_text for keyword in ["签到", "点击"]):
                     self.logger.debug("检测到未签到状态，需要执行签到")
                 else:
                     self.logger.info("今日已签到")
                     return True
             else:
-                # 备用检测方法：检查整个页面
-                self.logger.debug("未找到签到区域，使用备用检测方法")
-                page_text = self.driver.execute_script(
-                    "return document.body.innerText;"
-                )
-                if (
-                    any(keyword in page_text for keyword in ["已签到", "签到成功"])
-                    and "今日未签到" not in page_text
-                ):
-                    self.logger.info("今日已签到")
-                    return True
+                # 备用检测方法：使用原有的选择器
+                sign_area_selectors = [
+                    ".ddpc_sign_btna",
+                    'div[class*="sign_btn"]',
+                    ".sign-area",
+                ]
+
+                sign_area = self.element_finder.find_by_selectors(sign_area_selectors)
+                if sign_area:
+                    sign_area_text = sign_area.text.strip()
+                    self.logger.debug(f"签到区域文本: {sign_area_text}")
+
+                    # 如果按钮文本包含"已签到"，说明已经签到了
+                    if "今日已签到" in sign_area_text:
+                        self.logger.info("今日已签到")
+                        return True
+                    elif any(
+                        keyword in sign_area_text for keyword in ["未签到", "点击签到"]
+                    ):
+                        self.logger.debug("检测到未签到状态，需要执行签到")
+                    else:
+                        self.logger.info("今日已签到")
+                        return True
+                else:
+                    # 最后的备用检测方法：检查整个页面
+                    self.logger.error("未找到签到区域")
 
             # 查找签到按钮
             sign_button_selectors = [

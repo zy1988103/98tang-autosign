@@ -257,7 +257,7 @@ class AutoSignApp:
                     screenshot_helper.capture_and_send_screenshot(
                         driver=self.browser_manager.driver,
                         scenario="execution_error",
-                        context=live_screenshot_context,
+                        description=live_screenshot_context,
                     )
                     self.logger.debug("实时错误截图已发送到Telegram")
                 except Exception as live_screenshot_error:
@@ -342,7 +342,7 @@ class AutoSignApp:
                     screenshot_helper.capture_and_send_screenshot(
                         driver=self.browser_manager.driver,
                         scenario="execution_success",
-                        context=live_screenshot_context,
+                        description=live_screenshot_context,
                     )
                     self.logger.debug("执行成功截图已发送到Telegram")
                 except Exception as screenshot_error:
@@ -436,7 +436,11 @@ class AutoSignApp:
 
     def _perform_humanlike_activities(self) -> None:
         """执行拟人化活动"""
-        if not self.config_manager.get("enable_humanlike", False):
+        # 检查两个拟人化功能是否都禁用
+        enable_reply = self.config_manager.get("enable_reply", True)
+        enable_browsing = self.config_manager.get("enable_random_browsing", True)
+
+        if not enable_reply and not enable_browsing:
             self.logger.info("拟人化活动已禁用")
             self._record_task_result("browse", True, "拟人化活动已禁用，跳过执行")
             return

@@ -80,13 +80,13 @@ jobs:
         ENABLE_CHECKIN: ${{ vars.ENABLE_CHECKIN || 'true' }}
         
         # 拟人化行为配置
-        ENABLE_REPLY: ${{ vars.ENABLE_REPLY || 'false' }}
+        ENABLE_REPLY: ${{ vars.ENABLE_REPLY || 'true' }}
         REPLY_COUNT: ${{ vars.REPLY_COUNT || '2' }}
-        ENABLE_RANDOM_BROWSING: ${{ vars.ENABLE_RANDOM_BROWSING || 'false' }}
+        ENABLE_RANDOM_BROWSING: ${{ vars.ENABLE_RANDOM_BROWSING || 'true' }}
         BROWSE_PAGE_COUNT: ${{ vars.BROWSE_PAGE_COUNT || '3' }}
         COMMENT_INTERVAL: ${{ vars.COMMENT_INTERVAL || '15' }}
         WAIT_AFTER_LOGIN: ${{ vars.WAIT_AFTER_LOGIN || '5' }}
-        REPLY_MESSAGES: ${{ vars.REPLY_MESSAGES || '感谢分享资源，收藏了;好资源收藏了，谢谢楼主;感谢楼主的精彩分享;谢谢分享，非常实用;好内容，支持一下楼主' }}
+        REPLY_MESSAGES: ${{ vars.REPLY_MESSAGES || '感谢分享资源，收藏了;好资源收藏了，谢谢楼主;感谢楼主的精彩分享;谢谢分享，感谢精彩资源;好内容，支持一下楼主' }}
         
         # 延迟优化配置
         TIMING_MULTIPLIER: ${{ vars.TIMING_MULTIPLIER || '1.0' }}
@@ -207,9 +207,9 @@ jobs:
         ENABLE_CHECKIN: ${{ vars.ENABLE_CHECKIN || 'true' }}
         
         # 拟人化行为配置
-        ENABLE_REPLY: ${{ vars.ENABLE_REPLY || 'false' }}
+        ENABLE_REPLY: ${{ vars.ENABLE_REPLY || 'true' }}
         REPLY_COUNT: ${{ vars.REPLY_COUNT || '2' }}
-        ENABLE_RANDOM_BROWSING: ${{ vars.ENABLE_RANDOM_BROWSING || 'false' }}
+        ENABLE_RANDOM_BROWSING: ${{ vars.ENABLE_RANDOM_BROWSING || 'true' }}
         BROWSE_PAGE_COUNT: ${{ vars.BROWSE_PAGE_COUNT || '3' }}
         COMMENT_INTERVAL: ${{ vars.COMMENT_INTERVAL || '15' }}
         WAIT_AFTER_LOGIN: ${{ vars.WAIT_AFTER_LOGIN || '5' }}
