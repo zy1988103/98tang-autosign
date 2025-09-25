@@ -139,17 +139,67 @@ class AutoSignApp:
 
         # 不再发送单个任务通知，只在最后发送摘要
 
+    def _capture_debug_files(self) -> tuple[Optional[str], Optional[str]]:
+        """
+        捕获调试文件（截图和HTML源代码）
+
+        Returns:
+            (screenshot_path, html_path): 截图文件路径和HTML文件路径的元组
+        """
+        screenshot_path = None
+        html_path = None
+
+        try:
+            if self.browser_manager and self.browser_manager.driver:
+                # 创建调试文件目录
+                debug_dir = os.path.join("logs", "debug")
+                os.makedirs(debug_dir, exist_ok=True)
+
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
+                # 捕获截图
+                try:
+                    screenshot_path = os.path.join(
+                        debug_dir, f"error_screenshot_{timestamp}.png"
+                    )
+                    self.browser_manager.driver.save_screenshot(screenshot_path)
+                    self.logger.debug(f"错误截图已保存: {screenshot_path}")
+                except Exception as e:
+                    self.logger.warning(f"捕获错误截图失败: {e}")
+                    screenshot_path = None
+
+                # 捕获HTML源代码
+                try:
+                    html_path = os.path.join(
+                        debug_dir, f"error_source_{timestamp}.html"
+                    )
+                    with open(html_path, "w", encoding="utf-8") as f:
+                        f.write(self.browser_manager.driver.page_source)
+                    self.logger.debug(f"错误HTML源代码已保存: {html_path}")
+                except Exception as e:
+                    self.logger.warning(f"捕获错误HTML源代码失败: {e}")
+                    html_path = None
+
+        except Exception as e:
+            self.logger.warning(f"捕获调试文件失败: {e}")
+
+        return screenshot_path, html_path
+
     def _send_error_with_log(self, error_message: str, error_title: str) -> None:
-        """发送错误通知，并根据配置发送日志文件"""
+        """发送错误通知，并根据配置发送日志文件和调试文件"""
         if not self.telegram_notifier:
             return
 
         try:
+            # 捕获调试文件
+            screenshot_path, html_path = self._capture_debug_files()
+
             # 发送错误通知
             self.telegram_notifier.send_error(error_message, error_title)
 
-            # 如果启用了日志推送，则发送日志文件
+            # 如果启用了日志推送，则发送调试文件
             if self.config_manager.get("TELEGRAM_SEND_LOG_FILE", False):
+                # 发送日志文件
                 current_log_file = self.logger_manager.get_current_log_file()
                 if current_log_file and os.path.exists(current_log_file):
                     try:
@@ -157,6 +207,23 @@ class AutoSignApp:
                         self.logger.debug("错误日志文件已发送到Telegram")
                     except Exception as log_error:
                         self.logger.warning(f"发送错误日志文件失败: {log_error}")
+
+                # 发送截图
+                if screenshot_path and os.path.exists(screenshot_path):
+                    try:
+                        self.telegram_notifier.send_screenshot(screenshot_path)
+                        self.logger.debug("错误截图已发送到Telegram")
+                    except Exception as screenshot_error:
+                        self.logger.warning(f"发送错误截图失败: {screenshot_error}")
+
+                # 发送HTML源代码文件
+                if html_path and os.path.exists(html_path):
+                    try:
+                        self.telegram_notifier.send_html_file(html_path)
+                        self.logger.debug("错误HTML源代码已发送到Telegram")
+                    except Exception as html_error:
+                        self.logger.warning(f"发送错误HTML源代码失败: {html_error}")
+
         except Exception as notify_error:
             self.logger.warning(f"发送错误通知时出错: {notify_error}")
 
@@ -281,8 +348,8 @@ class AutoSignApp:
         error_msg = "登录重试次数已达上限"
         self.logger.error(error_msg)
 
-        # 发送错误通知
-        self._send_error_with_log(error_msg, "登录失败")
+        # 不在这里发送错误通知，由调用方统一处理
+        # 避免重复通知，统一在 run() 方法中发送最终报告
 
         return False
 
@@ -361,6 +428,10 @@ class AutoSignApp:
             # 记录开始时间
             self.execution_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+            # 执行结果标志
+            execution_success = False
+            last_error_message = "程序执行过程中出现未知错误"
+
             try:
                 self.logger.info("开始98tang-autosign程序")
 
@@ -370,39 +441,24 @@ class AutoSignApp:
                 # 步骤1: 创建浏览器
                 self.logger.debug("步骤1: 创建浏览器驱动")
                 if not self._create_browser():
-                    error_msg = "浏览器驱动创建失败"
-                    self.logger.error(error_msg)
-
-                    # 发送错误通知
-                    self._send_error_with_log(error_msg, "浏览器初始化失败")
-
+                    last_error_message = "浏览器驱动创建失败"
+                    self.logger.error(last_error_message)
                     return False
                 self.logger.debug("浏览器驱动创建成功")
 
                 # 步骤2: 初始化业务管理器
                 self.logger.debug("步骤2: 初始化业务管理器")
                 if not self._initialize_managers():
-                    error_msg = "业务管理器初始化失败"
-                    self.logger.error(error_msg)
-
-                    # 发送错误通知
-                    self._send_error_with_log(error_msg, "系统初始化失败")
-
+                    last_error_message = "业务管理器初始化失败"
+                    self.logger.error(last_error_message)
                     return False
                 self.logger.debug("业务管理器初始化成功")
 
                 # 步骤3: 登录
                 self.logger.debug("步骤3: 执行登录流程")
                 if not self._login_with_retry():
-                    error_msg = "登录失败"
-                    self.logger.error(error_msg)
-
-                    # 发送登录失败摘要
-                    self._send_execution_summary(False)
-
-                    # 发送登录失败的错误通知（如果之前没有发送过）
-                    self._send_error_with_log(error_msg, "程序执行失败")
-
+                    last_error_message = "登录失败"
+                    self.logger.error(last_error_message)
                     return False
                 self.logger.debug("登录流程完成")
 
@@ -413,38 +469,34 @@ class AutoSignApp:
                 # 步骤5: 签到
                 self.logger.debug("步骤5: 执行签到流程")
                 if not self._perform_signin():
-                    error_msg = "签到失败"
-                    self.logger.error(error_msg)
-
-                    # 发送签到失败摘要
-                    self._send_execution_summary(False)
-
-                    # 发送签到失败的错误通知
-                    self._send_error_with_log(error_msg, "签到执行失败")
-
+                    last_error_message = "签到失败"
+                    self.logger.error(last_error_message)
                     return False
 
                 self.logger.info("程序执行完成")
-                # 发送成功摘要
-                self._send_execution_summary(True)
+                execution_success = True
                 return True
 
             except Exception as e:
-                self.logger.error(f"程序运行失败: {e}")
+                last_error_message = f"程序运行异常: {str(e)}"
+                self.logger.error(last_error_message)
                 if self.debug_mode:
                     import traceback
 
                     self.logger.debug(f"详细错误信息: {traceback.format_exc()}")
-
-                # 发送失败摘要
-                self._send_execution_summary(False)
-
-                # 发送错误通知
-                self._send_error_with_log(str(e), "程序执行异常")
-
                 return False
 
             finally:
+                # 统一发送执行报告（无论成功或失败）
+                if execution_success:
+                    # 发送成功摘要
+                    self._send_execution_summary(True)
+                else:
+                    # 发送失败摘要和错误通知
+                    self._send_execution_summary(False)
+                    self._send_error_with_log(last_error_message, "程序执行失败")
+
+                # 清理资源
                 self._cleanup()
 
     def _log_debug_info(self) -> None:

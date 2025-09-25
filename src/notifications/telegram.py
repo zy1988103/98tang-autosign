@@ -430,3 +430,72 @@ class TelegramNotifier:
 """
 
         return self.send_message(message.strip())
+
+    def send_screenshot(self, screenshot_path: str) -> bool:
+        """
+        发送错误截图
+
+        Args:
+            screenshot_path: 截图文件路径
+
+        Returns:
+            是否发送成功
+        """
+        try:
+            if not os.path.exists(screenshot_path):
+                self.logger.error(f"截图文件不存在: {screenshot_path}")
+                return False
+
+            url = f"{self.api_url}/sendPhoto"
+
+            with open(screenshot_path, "rb") as f:
+                files = {"photo": f}
+                data = {
+                    "chat_id": self.chat_id,
+                    "caption": f'📸 *错误截图*\n\n⏰ 捕获时间: `{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}`',
+                    "parse_mode": "MarkdownV2",
+                }
+
+                self.logger.debug(f"发送错误截图: {screenshot_path}")
+
+                response = requests.post(url, files=files, data=data, timeout=60)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("ok"):
+                        self.logger.debug("错误截图发送成功")
+                        return True
+                    else:
+                        self.logger.error(
+                            f"Telegram API返回错误: {result.get('description', '未知错误')}"
+                        )
+                        return False
+                else:
+                    self.logger.error(
+                        f"错误截图发送失败，HTTP状态码: {response.status_code}"
+                    )
+                    self.logger.debug(f"响应内容: {response.text}")
+                    return False
+
+        except requests.exceptions.Timeout:
+            self.logger.error("错误截图发送超时")
+            return False
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"错误截图发送失败: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"错误截图发送异常: {e}")
+            return False
+
+    def send_html_file(self, html_path: str) -> bool:
+        """
+        发送HTML源代码文件
+
+        Args:
+            html_path: HTML文件路径
+
+        Returns:
+            是否发送成功
+        """
+        caption = f'📄 错误HTML源代码\n\n⏰ 捕获时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+        return self.send_document(html_path, caption)

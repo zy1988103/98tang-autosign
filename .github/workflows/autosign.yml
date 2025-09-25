@@ -100,12 +100,13 @@ jobs:
         
         python main.py
         
-    - name: 上传日志文件
+    - name: 上传日志和调试文件
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: autosign-logs-environment-${{ github.run_number }}
-        path: logs/
+        path: |
+          logs/
         retention-days: 30
         
     - name: 执行结果通知
@@ -204,12 +205,13 @@ jobs:
         
         python main.py
         
-    - name: 上传日志文件
+    - name: 上传日志和调试文件
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: autosign-logs-repository-${{ github.run_number }}
-        path: logs/
+        path: |
+          logs/
         retention-days: 30
         
     - name: 执行结果通知
