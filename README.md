@@ -11,6 +11,9 @@
 
 </div>
 
+## GIF演示
+
+[![9月26日 (1)](https://image.dooo.ng/c/2025/09/26/68d594566821a.gif)](https://image.dooo.ng/c/2025/09/26/68d594566821a.gif)
 
 ---
 
