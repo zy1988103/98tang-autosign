@@ -193,15 +193,18 @@ class AutoSignApp:
             self.telegram_notifier.send_summary(summary)
             self.logger.debug("执行摘要已发送到Telegram")
 
-            # 如果配置了发送日志文件，则发送当前日志文件
-            if self.config_manager.get("TELEGRAM_SEND_LOG_FILE", False):
+            # 只在执行成功时发送日志文件（避免与错误通知重复推送）
+            # 失败时的日志文件会通过 _send_error_with_log 方法发送
+            if overall_success and self.config_manager.get(
+                "TELEGRAM_SEND_LOG_FILE", False
+            ):
                 current_log_file = self.logger_manager.get_current_log_file()
                 if current_log_file and os.path.exists(current_log_file):
                     try:
                         self.telegram_notifier.send_log_file(current_log_file)
-                        self.logger.debug("日志文件已发送到Telegram")
+                        self.logger.debug("成功日志文件已发送到Telegram")
                     except Exception as log_error:
-                        self.logger.warning(f"发送日志文件失败: {log_error}")
+                        self.logger.warning(f"发送成功日志文件失败: {log_error}")
 
         except Exception as e:
             self.logger.warning(f"发送Telegram执行摘要失败: {e}")
