@@ -139,6 +139,27 @@ class AutoSignApp:
 
         # 不再发送单个任务通知，只在最后发送摘要
 
+    def _send_error_with_log(self, error_message: str, error_title: str) -> None:
+        """发送错误通知，并根据配置发送日志文件"""
+        if not self.telegram_notifier:
+            return
+
+        try:
+            # 发送错误通知
+            self.telegram_notifier.send_error(error_message, error_title)
+
+            # 如果启用了日志推送，则发送日志文件
+            if self.config_manager.get("TELEGRAM_SEND_LOG_FILE", False):
+                current_log_file = self.logger_manager.get_current_log_file()
+                if current_log_file and os.path.exists(current_log_file):
+                    try:
+                        self.telegram_notifier.send_log_file(current_log_file)
+                        self.logger.debug("错误日志文件已发送到Telegram")
+                    except Exception as log_error:
+                        self.logger.warning(f"发送错误日志文件失败: {log_error}")
+        except Exception as notify_error:
+            self.logger.warning(f"发送错误通知时出错: {notify_error}")
+
     def _send_execution_summary(self, overall_success: bool) -> None:
         """发送执行摘要"""
         if not self.telegram_notifier or not self.execution_start_time:
@@ -258,11 +279,7 @@ class AutoSignApp:
         self.logger.error(error_msg)
 
         # 发送错误通知
-        if self.telegram_notifier:
-            try:
-                self.telegram_notifier.send_error(error_msg, "登录失败")
-            except Exception as e:
-                self.logger.warning(f"发送登录失败通知时出错: {e}")
+        self._send_error_with_log(error_msg, "登录失败")
 
         return False
 
@@ -308,11 +325,7 @@ class AutoSignApp:
                 self._record_task_result("signin", False, "签到执行失败")
 
                 # 发送签到失败通知
-                if self.telegram_notifier:
-                    try:
-                        self.telegram_notifier.send_error(error_msg, "签到操作失败")
-                    except Exception as notify_error:
-                        self.logger.warning(f"发送签到失败通知时出错: {notify_error}")
+                self._send_error_with_log(error_msg, "签到操作失败")
 
                 return False
 
@@ -322,11 +335,7 @@ class AutoSignApp:
             self._record_task_result("signin", False, "签到过程出错", str(e))
 
             # 发送签到异常通知
-            if self.telegram_notifier:
-                try:
-                    self.telegram_notifier.send_error(error_msg, "签到过程异常")
-                except Exception as notify_error:
-                    self.logger.warning(f"发送签到异常通知时出错: {notify_error}")
+            self._send_error_with_log(error_msg, "签到过程异常")
 
             return False
 
@@ -362,13 +371,7 @@ class AutoSignApp:
                     self.logger.error(error_msg)
 
                     # 发送错误通知
-                    if self.telegram_notifier:
-                        try:
-                            self.telegram_notifier.send_error(
-                                error_msg, "浏览器初始化失败"
-                            )
-                        except Exception as e:
-                            self.logger.warning(f"发送浏览器初始化失败通知时出错: {e}")
+                    self._send_error_with_log(error_msg, "浏览器初始化失败")
 
                     return False
                 self.logger.debug("浏览器驱动创建成功")
@@ -380,15 +383,7 @@ class AutoSignApp:
                     self.logger.error(error_msg)
 
                     # 发送错误通知
-                    if self.telegram_notifier:
-                        try:
-                            self.telegram_notifier.send_error(
-                                error_msg, "系统初始化失败"
-                            )
-                        except Exception as e:
-                            self.logger.warning(
-                                f"发送业务管理器初始化失败通知时出错: {e}"
-                            )
+                    self._send_error_with_log(error_msg, "系统初始化失败")
 
                     return False
                 self.logger.debug("业务管理器初始化成功")
@@ -403,11 +398,7 @@ class AutoSignApp:
                     self._send_execution_summary(False)
 
                     # 发送登录失败的错误通知（如果之前没有发送过）
-                    if self.telegram_notifier:
-                        try:
-                            self.telegram_notifier.send_error(error_msg, "程序执行失败")
-                        except Exception as e:
-                            self.logger.warning(f"发送登录失败通知时出错: {e}")
+                    self._send_error_with_log(error_msg, "程序执行失败")
 
                     return False
                 self.logger.debug("登录流程完成")
@@ -426,11 +417,7 @@ class AutoSignApp:
                     self._send_execution_summary(False)
 
                     # 发送签到失败的错误通知
-                    if self.telegram_notifier:
-                        try:
-                            self.telegram_notifier.send_error(error_msg, "签到执行失败")
-                        except Exception as e:
-                            self.logger.warning(f"发送签到失败通知时出错: {e}")
+                    self._send_error_with_log(error_msg, "签到执行失败")
 
                     return False
 
@@ -450,11 +437,7 @@ class AutoSignApp:
                 self._send_execution_summary(False)
 
                 # 发送错误通知
-                if self.telegram_notifier:
-                    try:
-                        self.telegram_notifier.send_error(str(e), "程序执行异常")
-                    except Exception:
-                        pass  # 避免通知发送失败影响主程序
+                self._send_error_with_log(str(e), "程序执行异常")
 
                 return False
 

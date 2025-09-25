@@ -148,14 +148,35 @@ def main():
 
             print("详细错误信息:")
             traceback.print_exc()
-            
+
         # 尝试发送错误通知（如果应用实例存在且有Telegram通知器）
-        if _app_instance and hasattr(_app_instance, 'telegram_notifier') and _app_instance.telegram_notifier:
+        if (
+            _app_instance
+            and hasattr(_app_instance, "telegram_notifier")
+            and _app_instance.telegram_notifier
+        ):
             try:
                 _app_instance.telegram_notifier.send_error(str(e), "程序启动异常")
+
+                # 如果启用了日志推送且有日志文件，则发送日志文件
+                if (
+                    _app_instance.config_manager.get("TELEGRAM_SEND_LOG_FILE", False)
+                    and hasattr(_app_instance, "logger_manager")
+                    and _app_instance.logger_manager
+                ):
+                    current_log_file = (
+                        _app_instance.logger_manager.get_current_log_file()
+                    )
+                    if current_log_file and os.path.exists(current_log_file):
+                        try:
+                            _app_instance.telegram_notifier.send_log_file(
+                                current_log_file
+                            )
+                        except Exception:
+                            pass  # 避免日志发送失败影响程序退出
             except Exception:
                 pass  # 避免通知发送失败影响程序退出
-                
+
         # 清理全局引用
         _app_instance = None
         return 1

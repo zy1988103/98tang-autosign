@@ -102,6 +102,35 @@ A: 这是因为程序在CI环境中仍然检查配置文件。解决方案：
 **方法3：手动修复**
 如果使用旧版本，在 `main.py` 中添加CI环境检测。
 
+### Q: GitHub Actions运行时没有详细日志？
+A: 最新版本已优化日志输出：
+
+**自动DEBUG模式**
+- GitHub Actions环境下自动启用DEBUG级别日志
+- 提供详细的操作步骤和错误信息
+- 无需手动配置
+
+**手动调整日志级别**
+如需调整，在Repository Variables中设置：
+- `LOG_LEVEL=INFO` （基础信息）
+- `LOG_LEVEL=DEBUG` （详细调试）
+- `LOG_LEVEL=WARNING` （仅警告和错误）
+
+### Q: 程序出错时没有收到Telegram通知？
+A: 最新版本已增强错误通知机制：
+
+**全面错误覆盖**
+- 浏览器初始化失败
+- 业务管理器初始化失败  
+- 登录失败（包括重试次数达到上限）
+- 签到失败或异常
+- 程序启动异常
+
+**通知触发条件**
+- 必须启用Telegram通知（`ENABLE_TELEGRAM_NOTIFICATION=true`）
+- 必须正确配置Bot Token和Chat ID
+- 任何ERROR级别的错误都会触发通知
+
 ### Q: 如何调试程序？
 A: 本地运行时设置：
 ```env

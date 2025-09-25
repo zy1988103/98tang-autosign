@@ -81,7 +81,7 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         TELEGRAM_PROXY_URL: ${{ secrets.TELEGRAM_PROXY_URL }}
-        TELEGRAM_SEND_LOG_FILE: ${{ vars.TELEGRAM_SEND_LOG_FILE || 'false' }}
+        TELEGRAM_SEND_LOG_FILE: ${{ vars.TELEGRAM_SEND_LOG_FILE || 'true' }}  # GitHub Actions 默认启用日志推送
         
         # 系统配置（强制设置）
         HEADLESS: 'true'  # Github Action 强制无头模式
@@ -184,7 +184,7 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         TELEGRAM_PROXY_URL: ${{ secrets.TELEGRAM_PROXY_URL }}
-        TELEGRAM_SEND_LOG_FILE: ${{ vars.TELEGRAM_SEND_LOG_FILE || 'false' }}
+        TELEGRAM_SEND_LOG_FILE: ${{ vars.TELEGRAM_SEND_LOG_FILE || 'true' }}  # GitHub Actions 默认启用日志推送
         
         # 系统配置（强制设置）
         HEADLESS: 'true'  # Github Action 强制无头模式
