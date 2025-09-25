@@ -16,8 +16,8 @@ on:
   workflow_dispatch:
     # 允许手动触发 - 可在任何分支运行
   push:
-    # 当推送到指定分支时触发
-    branches: [ main, develop ]
+    # 当推送到main分支时触发（develop分支不会自动运行）
+    branches: [ main ]
   pull_request:
     # 当创建PR到指定分支时触发（可选，用于测试）
     branches: [ main ]
@@ -28,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: 98tang-autosign
+    # 确保只在main分支上运行自动签到
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     outputs:
       failure_reason: ${{ steps.check_config.outputs.failure_reason }}
     
@@ -163,8 +165,8 @@ jobs:
 
   # Repository secrets模式（智能回退）- 当Environment secrets不可用时使用
   autosign-repository:
-    # 只有当Environment secrets模式失败且是配置问题时才运行
-    if: failure() && needs.autosign-environment.result == 'failure' && needs.autosign-environment.outputs.failure_reason == 'missing_environment_secrets'
+    # 只有当Environment secrets模式失败且是配置问题时才运行，且只在main分支上运行
+    if: failure() && needs.autosign-environment.result == 'failure' && needs.autosign-environment.outputs.failure_reason == 'missing_environment_secrets' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
     needs: autosign-environment
     runs-on: ubuntu-latest
     timeout-minutes: 10
