@@ -59,7 +59,8 @@ class AutoSignApp:
 
         # 初始化其他组件
         self.browser_manager = BrowserDriverManager(self.logger)
-        self.retry_manager = RetryManager(max_retries=3)
+        security_config = self.config_manager.get_security_config()
+        self.retry_manager = RetryManager(max_retries=security_config["max_retries"])
 
         # 业务逻辑管理器
         self.signin_manager: Optional[SignInManager] = None

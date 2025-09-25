@@ -77,9 +77,12 @@ schedule:
 ### Q: 安全提问如何配置？
 A: 登录网站查看你的安全提问，然后在配置中填写：
 ```env
+ENABLE_SECURITY_QUESTION=true       # 启用安全提问处理
 SECURITY_QUESTION=你设置的安全提问
 SECURITY_ANSWER=对应的答案
 ```
+
+> 📖 **安全配置详情**: 查看 [configuration.md](configuration.md) 的安全提问配置部分，了解所有安全相关参数。
 
 ### Q: Telegram通知收不到？
 A: 检查以下配置：
@@ -99,9 +102,11 @@ A: 系统支持以下通知类型：
 A: 通过以下配置项控制：
 ```env
 ENABLE_TELEGRAM_NOTIFICATION=true    # 总开关
-TELEGRAM_SEND_LOG_FILE=true          # 是否发送日志文件
-TELEGRAM_SEND_SCREENSHOT=true        # 是否发送页面截图
+TELEGRAM_SEND_LOG_FILE=false         # 是否发送日志文件
+TELEGRAM_SEND_SCREENSHOT=false       # 是否发送页面截图
 ```
+
+> 📖 **完整配置说明**: 查看 [configuration.md](configuration.md) 了解所有Telegram相关配置参数的详细说明。
 
 ### Q: 程序运行缓慢或超时？
 A: 可以调整以下参数：
@@ -110,6 +115,8 @@ TIMING_MULTIPLIER=0.8     # 减小延时倍数
 TIMEOUT_MINUTES=10        # 增加超时时间
 ENABLE_SMART_TIMING=false # 关闭智能延时
 ```
+
+> 📖 **性能调优指南**: 查看 [configuration.md](configuration.md) 的高级配置部分，了解所有性能相关参数的详细说明。
 
 ### Q: 签到成功但没有积分？
 A: 可能的原因：
@@ -192,6 +199,8 @@ A: 本地运行时设置：
 HEADLESS=false     # 显示浏览器窗口
 LOG_LEVEL=DEBUG    # 显示详细日志
 ```
+
+> 📖 **调试配置指南**: 查看 [configuration.md](configuration.md) 的调试和日志配置部分，了解所有调试相关参数。
 
 ## 日志分析
 

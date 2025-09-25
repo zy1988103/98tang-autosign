@@ -48,11 +48,13 @@ ENABLE_RANDOM_BROWSING=true
 
 # Telegram通知配置
 ENABLE_TELEGRAM_NOTIFICATION=true
-TELEGRAM_SEND_LOG_FILE=true        # 发送日志文件
-TELEGRAM_SEND_SCREENSHOT=true      # 发送页面截图
+TELEGRAM_SEND_LOG_FILE=false       # 发送日志文件
+TELEGRAM_SEND_SCREENSHOT=false     # 发送页面截图
 
 # 等等其他配置项
 ```
+
+> 📖 **完整配置参考**: 查看 [configuration.md](configuration.md) 了解所有配置参数的详细说明。
 
 #### 🔧 方式B：Repository Secrets (兼容模式)
 
@@ -106,7 +108,9 @@ cp config.env.example config.env
 nano config.env
 ```
 
-在 `config.env` 中填写你的账号信息，具体配置参数请参考 `config.env.example` 文件中的注释说明。
+在 `config.env` 中填写你的账号信息。
+
+> 📖 **完整配置说明**: 查看 [configuration.md](configuration.md) 了解所有配置参数的详细说明、默认值和使用注意事项。
 
 ### 5. 运行程序
 ```bash

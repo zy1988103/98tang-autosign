@@ -142,10 +142,12 @@ class ConfigManager:
 
         # 安全保护配置
         timeout_minutes = int(os.getenv("TIMEOUT_MINUTES", "5"))
+        max_retries = int(os.getenv("MAX_RETRIES", "3"))
         self._config.update(
             {
                 "timeout_minutes": max(1, timeout_minutes),  # 最少1分钟
                 "timeout_seconds": max(60, timeout_minutes * 60),  # 转换为秒
+                "max_retries": max(1, max_retries),  # 最少1次重试
             }
         )
 
@@ -317,4 +319,5 @@ class ConfigManager:
         return {
             "timeout_minutes": self._config["timeout_minutes"],
             "timeout_seconds": self._config["timeout_seconds"],
+            "max_retries": self._config["max_retries"],
         }

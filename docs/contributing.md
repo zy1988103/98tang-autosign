@@ -149,6 +149,37 @@ src/
 4. **更新文档**: 在docs/中更新相关文档
 5. **添加日志**: 使用统一的日志系统记录操作
 
+#### 添加新配置参数
+
+当需要添加新的配置参数时，请遵循以下步骤：
+
+1. **在 `config.env.example` 中添加配置项**:
+   ```env
+   # 新功能配置
+   NEW_FEATURE_ENABLED=true
+   NEW_FEATURE_OPTION=default_value
+   ```
+
+2. **在 `src/core/config.py` 中添加配置处理**:
+   ```python
+   def get_new_feature_config(self) -> dict:
+       """获取新功能配置"""
+       return {
+           "enabled": self._get_bool("NEW_FEATURE_ENABLED", True),
+           "option": self._get_str("NEW_FEATURE_OPTION", "default_value")
+       }
+   ```
+
+3. **更新 `docs/configuration.md` 文档**:
+   - 在相应的功能模块部分添加新参数说明
+   - 包含参数类型、默认值、示例和使用注意事项
+
+4. **确保配置一致性**:
+   - 配置文件中的默认值必须与代码中的默认值一致
+   - 运行测试确保配置加载正常
+
+> 📖 **配置开发参考**: 查看 [configuration.md](configuration.md) 了解现有配置的结构和规范。
+
 ### 技术实现说明
 
 #### 截图功能架构

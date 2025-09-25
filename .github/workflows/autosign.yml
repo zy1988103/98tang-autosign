@@ -1,10 +1,18 @@
+# 98tang Auto Sign-in
+# 完整配置说明请参考: docs/configuration.md
 name: 98tang Auto Sign-in
 
 on:
   schedule:
-    # 每天北京时间上午9点执行 (UTC+8 = UTC+0-8, 所以9点对应UTC 1点)
+    # 每天北京时间0:00~0:30随机执行 (UTC+8 = UTC+0-8, 所以0点对应UTC 16点)
+    # 使用多个时间点增加随机性，配合代码内随机延迟实现0:00~0:30范围内随机执行
     # 注意：schedule 只在默认分支(main)上运行
-    - cron: '0 1 * * *'
+    - cron: '0 16 * * *'   # 北京时间 0:00
+    - cron: '5 16 * * *'   # 北京时间 0:05
+    - cron: '10 16 * * *'  # 北京时间 0:10
+    - cron: '15 16 * * *'  # 北京时间 0:15
+    - cron: '20 16 * * *'  # 北京时间 0:20
+    - cron: '25 16 * * *'  # 北京时间 0:25
   workflow_dispatch:
     # 允许手动触发 - 可在任何分支运行
   push:
@@ -64,6 +72,16 @@ jobs:
         fi
         echo "✅ 配置验证通过 (Environment secrets模式: 98tang-autosign)"
         
+    - name: 随机延迟执行
+      run: |
+        # 生成0-1800秒(0-30分钟)的随机延迟，确保在北京时间0:00~0:30内随机执行
+        DELAY=$((RANDOM % 1801))
+        echo "🎲 随机延迟: ${DELAY}秒 ($(($DELAY/60))分钟$(($DELAY%60))秒)"
+        echo "⏰ 当前UTC时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "🌏 当前北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+        echo "⏳ 延迟后将在北京时间 $(TZ='Asia/Shanghai' date -d "+${DELAY} seconds" '+%H:%M:%S') 开始执行"
+        sleep $DELAY
+        
     - name: 执行自动签到
       env:
         # 必需配置
@@ -115,8 +133,9 @@ jobs:
         
       run: |
         echo "🚀 开始执行自动签到 (Environment secrets模式: 98tang-autosign)..."
-        echo "📅 执行时间: $(date '+%Y-%m-%d %H:%M:%S') UTC"
+        echo "📅 实际执行时间: $(date '+%Y-%m-%d %H:%M:%S') UTC"
         echo "🌏 北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+        echo "⏰ 调度策略: 北京时间0:00~0:30随机执行"
         echo "👤 用户名: $(echo $SITE_USERNAME | head -c 2)****$(echo $SITE_USERNAME | tail -c 3)"
         echo "🔗 目标网站: $BASE_URL"
         echo ""
@@ -191,6 +210,16 @@ jobs:
         echo "✅ 配置验证通过 (Repository secrets模式 - 回退模式)"
         echo "⚠️ 建议配置 98tang-autosign 环境以获得更好的安全性"
         
+    - name: 随机延迟执行
+      run: |
+        # 生成0-1800秒(0-30分钟)的随机延迟，确保在北京时间0:00~0:30内随机执行
+        DELAY=$((RANDOM % 1801))
+        echo "🎲 随机延迟: ${DELAY}秒 ($(($DELAY/60))分钟$(($DELAY%60))秒)"
+        echo "⏰ 当前UTC时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "🌏 当前北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+        echo "⏳ 延迟后将在北京时间 $(TZ='Asia/Shanghai' date -d "+${DELAY} seconds" '+%H:%M:%S') 开始执行"
+        sleep $DELAY
+        
     - name: 执行自动签到
       env:
         # 必需配置
@@ -243,8 +272,9 @@ jobs:
       run: |
         echo "🚀 开始执行自动签到 (Repository secrets模式 - 回退模式)..."
         echo "⚠️ Environment secrets (98tang-autosign) 不可用，使用 Repository secrets"
-        echo "📅 执行时间: $(date '+%Y-%m-%d %H:%M:%S') UTC"
+        echo "📅 实际执行时间: $(date '+%Y-%m-%d %H:%M:%S') UTC"
         echo "🌏 北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+        echo "⏰ 调度策略: 北京时间0:00~0:30随机执行"
         echo "👤 用户名: $(echo $SITE_USERNAME | head -c 2)****$(echo $SITE_USERNAME | tail -c 3)"
         echo "🔗 目标网站: $BASE_URL"
         echo ""
