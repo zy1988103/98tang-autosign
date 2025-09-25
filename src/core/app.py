@@ -448,9 +448,32 @@ class AutoSignApp:
 
         try:
             self.logger.info("开始执行拟人化活动")
-            self.humanlike_manager.perform_humanlike_activities()
+
+            # 执行拟人化活动并获取详细结果
+            activity_results = (
+                self.humanlike_manager.perform_humanlike_activities_with_results()
+            )
+
+            # 记录浏览活动结果
+            if enable_browsing:
+                browse_success = activity_results.get("browse_success", True)
+                browse_message = activity_results.get(
+                    "browse_message", "拟真浏览执行成功"
+                )
+                self._record_task_result("browse", browse_success, browse_message)
+
+            # 记录回帖活动结果
+            if enable_reply:
+                reply_success = activity_results.get("reply_success", False)
+                reply_message = activity_results.get(
+                    "reply_message", "回帖活动执行失败"
+                )
+                reply_details = activity_results.get("reply_details")
+                self._record_task_result(
+                    "reply", reply_success, reply_message, reply_details
+                )
+
             self.logger.info("拟人化活动执行完成")
-            self._record_task_result("browse", True, "拟人化活动执行成功")
 
         except Exception as e:
             self.logger.warning(f"拟人化活动执行失败: {e}")

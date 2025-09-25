@@ -6,7 +6,7 @@
 
 import random
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from urllib.parse import urljoin
 
 from ..browser.helpers import BrowserHelper
@@ -301,6 +301,103 @@ class HumanlikeBehavior:
 
         except Exception as e:
             self.logger.warning(f"拟人化活动失败: {e}")
+
+    def perform_humanlike_activities_with_results(self) -> Dict[str, Any]:
+        """执行拟人化活动并返回详细结果"""
+        results = {
+            "browse_success": True,
+            "browse_message": "拟真浏览执行成功",
+            "reply_success": False,
+            "reply_message": "回帖活动未执行",
+            "reply_details": None,
+        }
+
+        try:
+            self.logger.info("开始拟人化活动")
+            TimingManager.adaptive_wait(
+                TimingManager.PAGE_LOAD_DELAY, "normal", self.logger
+            )
+
+            # 随机浏览
+            if self.config.get("enable_random_browsing", False):
+                self.logger.info("执行随机浏览")
+                page_count = self.config.get("browse_page_count", 3)
+                try:
+                    self.random_browse_pages(page_count)
+                    results["browse_success"] = True
+                    results["browse_message"] = (
+                        f"拟真浏览执行成功，浏览了 {page_count} 页"
+                    )
+                except Exception as e:
+                    results["browse_success"] = False
+                    results["browse_message"] = f"拟真浏览执行失败: {str(e)}"
+                    self.logger.warning(f"随机浏览失败: {e}")
+
+            # 回帖活动
+            if self.config.get("enable_reply", False):
+                reply_count = self.config.get("reply_count", 2)
+                self.logger.info(f"开始回帖活动，目标数量: {reply_count}")
+
+                try:
+                    post_targets = self.find_reply_targets(reply_count)
+
+                    if not post_targets:
+                        results["reply_success"] = False
+                        results["reply_message"] = "未找到可回帖的目标"
+                        results["reply_details"] = "没有找到合适的帖子进行回复"
+                    else:
+                        success_count = 0
+                        failed_posts = []
+
+                        for i, post_info in enumerate(post_targets):
+                            if self.reply_to_post(post_info):
+                                success_count += 1
+                            else:
+                                failed_posts.append(post_info.get("title", "未知标题"))
+
+                            # 两次回帖间隔
+                            if i < len(post_targets) - 1:
+                                wait_time = TimingManager.smart_wait(
+                                    TimingManager.REPLY_INTERVAL_DELAY, 1.0, self.logger
+                                )
+                                self.logger.info(
+                                    f"回帖间隔等待 {wait_time:.1f} 秒，模拟真实用户行为"
+                                )
+
+                        if success_count > 0:
+                            results["reply_success"] = True
+                            results["reply_message"] = (
+                                f"回帖活动执行成功，成功 {success_count}/{len(post_targets)} 个"
+                            )
+                            if failed_posts:
+                                results["reply_details"] = (
+                                    f"失败的回帖: {', '.join(failed_posts[:3])}"
+                                )
+                        else:
+                            results["reply_success"] = False
+                            results["reply_message"] = (
+                                f"回帖活动执行失败，成功 0/{len(post_targets)} 个"
+                            )
+                            results["reply_details"] = (
+                                f"所有回帖都失败了: {', '.join(failed_posts[:3])}"
+                            )
+
+                        self.logger.info(
+                            f"回帖活动完成，成功 {success_count}/{len(post_targets)} 个"
+                        )
+
+                except Exception as e:
+                    results["reply_success"] = False
+                    results["reply_message"] = f"回帖活动执行失败: {str(e)}"
+                    results["reply_details"] = f"回帖过程中发生异常: {str(e)}"
+                    self.logger.warning(f"回帖活动失败: {e}")
+
+        except Exception as e:
+            self.logger.warning(f"拟人化活动失败: {e}")
+            results["browse_success"] = False
+            results["browse_message"] = f"拟人化活动执行失败: {str(e)}"
+
+        return results
 
     def _smart_scroll_to_reply_area(self):
         """智能滚动到回复区域，检测是否到达底部"""

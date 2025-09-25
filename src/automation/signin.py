@@ -651,8 +651,8 @@ class SignInManager:
 
                 # 处理签到验证
                 if self.handle_sign_verification():
-                    self.logger.info("✅ 签到成功完成")
-                    return True
+                    # 签到完成后，重新验证签到状态
+                    return self._verify_signin_success()
                 else:
                     self.logger.error("❌ 签到验证失败")
                     return False
@@ -707,3 +707,120 @@ class SignInManager:
                 self.logger.warning(f"第{attempt + 1}次进入签到页面失败: {e}")
 
         return False
+
+    def _verify_signin_success(self, max_retries: int = 3) -> bool:
+        """
+        验证签到是否成功，检测系统繁忙状态并重试
+
+        Args:
+            max_retries: 最大重试次数
+
+        Returns:
+            是否签到成功
+        """
+        for attempt in range(max_retries):
+            try:
+                self.logger.info(f"验证签到状态 (第 {attempt + 1}/{max_retries} 次)")
+
+                # 刷新页面重新检查签到状态
+                self.driver.refresh()
+                TimingManager.smart_wait(
+                    TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger
+                )
+
+                # 检查是否有系统繁忙提示
+                if self._check_system_busy():
+                    self.logger.warning(f"检测到系统繁忙提示 (第 {attempt + 1} 次)")
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 5  # 递增等待时间：5秒、10秒、15秒
+                        self.logger.info(f"等待 {wait_time} 秒后重试...")
+                        TimingManager.smart_wait(wait_time, 1.0, self.logger)
+                        continue
+                    else:
+                        self.logger.error("系统繁忙，重试次数已达上限")
+                        return False
+
+                # 重新检查签到状态
+                signin_status = self._check_signin_status()
+
+                if signin_status == "already_signed":
+                    self.logger.info("✅ 签到验证成功，状态确认已签到")
+                    return True
+                elif signin_status == "need_signin":
+                    self.logger.warning(f"签到状态仍显示未签到 (第 {attempt + 1} 次)")
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 3  # 递增等待时间：3秒、6秒、9秒
+                        self.logger.info(f"等待 {wait_time} 秒后重试...")
+                        TimingManager.smart_wait(wait_time, 1.0, self.logger)
+                        continue
+                    else:
+                        self.logger.error("签到验证失败，状态仍显示未签到")
+                        return False
+                else:
+                    self.logger.warning(f"无法确定签到状态 (第 {attempt + 1} 次)")
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 2  # 递增等待时间：2秒、4秒、6秒
+                        self.logger.info(f"等待 {wait_time} 秒后重试...")
+                        TimingManager.smart_wait(wait_time, 1.0, self.logger)
+                        continue
+                    else:
+                        self.logger.error("签到验证失败，无法确定状态")
+                        return False
+
+            except Exception as e:
+                self.logger.error(f"验证签到状态时出错 (第 {attempt + 1} 次): {e}")
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2
+                    self.logger.info(f"等待 {wait_time} 秒后重试...")
+                    TimingManager.smart_wait(wait_time, 1.0, self.logger)
+                    continue
+                else:
+                    self.logger.error("签到验证失败，重试次数已达上限")
+                    return False
+
+        return False
+
+    def _check_system_busy(self) -> bool:
+        """
+        检查页面是否显示系统繁忙提示
+
+        Returns:
+            是否检测到系统繁忙
+        """
+        try:
+            # 检查常见的系统繁忙提示文本
+            busy_texts = [
+                "系统繁忙",
+                "请稍等重试",
+                "系统繁忙,请稍等重试",
+                "服务器繁忙",
+                "请稍后再试",
+                "系统维护中",
+            ]
+
+            page_text = self.driver.page_source.lower()
+
+            for busy_text in busy_texts:
+                if busy_text.lower() in page_text:
+                    self.logger.debug(f"检测到系统繁忙提示: {busy_text}")
+                    return True
+
+            # 检查是否有弹窗提示
+            alert_selectors = [".alert", ".message", ".tip", ".warning", ".error"]
+
+            for selector in alert_selectors:
+                elements = self.driver.find_elements("css selector", selector)
+                for element in elements:
+                    element_text = element.text.strip().lower()
+                    for busy_text in busy_texts:
+                        if busy_text.lower() in element_text:
+                            self.logger.debug(
+                                f"检测到弹窗中的系统繁忙提示: {busy_text}"
+                            )
+                            return True
+
+            return False
+
+        except Exception as e:
+            self.logger.debug(f"检查系统繁忙状态时出错: {e}")
+            return False
