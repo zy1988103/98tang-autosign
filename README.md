@@ -16,7 +16,7 @@
 ## ✨ 核心特性
 
 <div align="center">
-<table>
+<table align="center" style="margin: 0 auto;">
 <tr>
 <td width="50%" align="left" valign="top">
 
