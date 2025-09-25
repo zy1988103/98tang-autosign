@@ -61,6 +61,11 @@
    # 本地测试
    python main.py
    ```
+   
+   **GitHub Actions测试**:
+   - 如果修改了workflow文件，建议创建测试用的environment进行验证
+   - 可以使用 `workflow_dispatch` 手动触发测试
+   - 确保新功能在云端环境中也能正常工作
 
 4. **提交更改**:
    ```bash

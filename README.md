@@ -27,8 +27,9 @@
 
 ### Github Actions (推荐)
 1. Fork仓库到你的账号下
-2. 在仓库设置中配置 Secrets 和 Variables
-3. 启用工作流，每天自动运行
+2. 创建 `98tang-autosign` 环境并配置 Environment Secrets (推荐)
+3. 或者直接配置 Repository Secrets (兼容模式)
+4. 启用工作流，每天自动运行
 
 ### 本地运行
 1. 克隆仓库并安装依赖
@@ -39,46 +40,68 @@
 
 ## ⚙️ 配置参数
 
-| 参数名 | 默认值 | 说明 | 必需 | 类别 |
-|--------|--------|------|------|------|
-| **基本配置** | | | | |
-| `SITE_USERNAME` | - | 98tang用户名 | ✅ | 基本 |
-| `SITE_PASSWORD` | - | 98tang密码 | ✅ | 基本 |
-| `BASE_URL` | `https://www.sehuatang.org` | 目标网站URL | ❌ | 基本 |
-| **功能开关** | | | | |
-| `ENABLE_CHECKIN` | `true` | 启用签到功能 | ❌ | 功能 |
-| `ENABLE_SECURITY_QUESTION` | `false` | 启用安全提问处理 | ❌ | 功能 |
-| `SECURITY_QUESTION` | - | 安全提问内容 | ❌ | 功能 |
-| `SECURITY_ANSWER` | - | 安全提问答案 | ❌ | 功能 |
-| **拟人化行为** | | | | |
-| `ENABLE_REPLY` | `true` | 启用随机回复 | ❌ | 行为 |
-| `REPLY_COUNT` | `2` | 回复数量 (1-5) | ❌ | 行为 |
-| `ENABLE_RANDOM_BROWSING` | `true` | 启用随机浏览 | ❌ | 行为 |
-| `BROWSE_PAGE_COUNT` | `3` | 浏览页面数量 (1-10) | ❌ | 行为 |
-| `COMMENT_INTERVAL` | `15` | 回复间隔时间(秒) | ❌ | 行为 |
-| `WAIT_AFTER_LOGIN` | `5` | 登录后等待时间(秒) | ❌ | 行为 |
-| `REPLY_MESSAGES` | 预设回复内容 | 回复消息模板(用`;`分隔) | ❌ | 行为 |
-| **通知配置** | | | | |
-| `ENABLE_TELEGRAM_NOTIFICATION` | `false` | 启用Telegram通知 | ❌ | 通知 |
-| `TELEGRAM_BOT_TOKEN` | - | Telegram机器人Token | ❌ | 通知 |
-| `TELEGRAM_CHAT_ID` | - | Telegram聊天ID | ❌ | 通知 |
-| `TELEGRAM_PROXY_URL` | - | Telegram代理URL | ❌ | 通知 |
-| `TELEGRAM_SEND_LOG_FILE` | `true` | 发送日志文件 | ❌ | 通知 |
-| **系统配置** | | | | |
-| `HEADLESS` | `true` | 无头模式运行 | ❌ | 系统 |
-| `LOG_LEVEL` | `debug` | 日志级别 (DEBUG/INFO/WARNING/ERROR) | ❌ | 系统 |
-| `LOG_DIR` | `logs` | 日志保存目录 | ❌ | 系统 |
-| `MAX_LOG_FILES` | `7` | 最大日志文件数 | ❌ | 系统 |
-| **高级配置** | | | | |
-| `TIMING_MULTIPLIER` | `1.0` | 延时倍数 (0.5-3.0) | ❌ | 高级 |
-| `ENABLE_SMART_TIMING` | `true` | 启用智能延时 | ❌ | 高级 |
-| `MAX_RETRIES` | `3` | 最大重试次数 | ❌ | 高级 |
-| `TIMEOUT_MINUTES` | `5` | 超时时间(分钟) | ❌ | 高级 |
+### 🔑 必备配置
+| 参数名 | 说明 | 示例值 |
+|--------|------|--------|
+| `SITE_USERNAME` | 98tang论坛用户名 | `your_username` |
+| `SITE_PASSWORD` | 98tang论坛密码 | `your_password` |
 
-> **配置说明**：
-> - ✅ 必需配置，❌ 可选配置
-> - **本地运行**：在 `config.env` 文件中配置
-> - **Github Actions**：敏感信息在 Secrets 中配置，其他在 Variables 中配置
+### 🔧 基础功能配置
+| 参数名 | 默认值 | 说明 | 推荐设置 |
+|--------|--------|------|----------|
+| `BASE_URL` | `https://www.sehuatang.org` | 目标网站地址 | 保持默认 |
+| `ENABLE_CHECKIN` | `true` | 是否执行签到 | `true` |
+| `ENABLE_SECURITY_QUESTION` | `false` | 是否处理安全提问 | 有安全提问时设为`true` |
+| `SECURITY_QUESTION` | - | 你的安全提问内容 | 如：`你的生日是？` |
+| `SECURITY_ANSWER` | - | 安全提问的答案 | 如：`1990-01-01` |
+
+### 📱 Telegram通知配置
+| 参数名 | 默认值 | 说明 | 获取方法 |
+|--------|--------|------|----------|
+| `ENABLE_TELEGRAM_NOTIFICATION` | `false` | 是否启用通知 | 需要时设为`true` |
+| `TELEGRAM_BOT_TOKEN` | - | 机器人Token | 找@BotFather申请 |
+| `TELEGRAM_CHAT_ID` | - | 聊天ID | 找@userinfobot获取 |
+| `TELEGRAM_PROXY_URL` | - | 代理地址(可选) | 网络受限时使用 |
+| `TELEGRAM_SEND_LOG_FILE` | `true` | 是否发送日志文件 | `true` (便于调试) |
+
+### 🤖 拟人化行为配置
+<details>
+<summary>点击展开查看拟人化设置</summary>
+
+| 参数名 | 默认值 | 说明 | 建议值 |
+|--------|--------|------|--------|
+| `ENABLE_REPLY` | `true` | 是否随机回复帖子 | `true` (更像真人) |
+| `REPLY_COUNT` | `2` | 每次回复帖子数量 | `1-3` (适中) |
+| `ENABLE_RANDOM_BROWSING` | `true` | 是否随机浏览页面 | `true` (增加真实性) |
+| `BROWSE_PAGE_COUNT` | `3` | 浏览页面数量 | `2-5` (不要太多) |
+| `COMMENT_INTERVAL` | `15` | 回复间隔时间(秒) | `10-30` (避免频繁操作) |
+| `WAIT_AFTER_LOGIN` | `5` | 登录后等待时间(秒) | `3-10` (模拟人工操作) |
+| `REPLY_MESSAGES` | 预设内容 | 回复模板(`;`分隔) | 自定义友好回复 |
+
+</details>
+
+### ⚡ 高级配置
+<details>
+<summary>点击展开查看高级设置</summary>
+
+| 参数名 | 默认值 | 说明 | 调整建议 |
+|--------|--------|------|----------|
+| `HEADLESS` | `true` | 无界面模式 | Actions必须为`true` |
+| `LOG_LEVEL` | `debug` | 日志详细程度 | `info`(生产) / `debug`(调试) |
+| `TIMING_MULTIPLIER` | `1.0` | 操作速度倍数 | `0.8-1.5` (慢一点更安全) |
+| `MAX_RETRIES` | `3` | 失败重试次数 | `2-5` (适中即可) |
+| `TIMEOUT_MINUTES` | `5` | 整体超时时间 | `3-10` (根据网络调整) |
+
+</details>
+
+> **📋 配置方式**：
+> - **Github Actions (推荐)**: 创建`98tang-autosign`环境，在Environment Secrets中配置敏感信息
+> - **Github Actions (兼容)**: 直接在Repository Secrets中配置，系统自动回退使用
+> - **本地运行**: 所有配置都在`config.env`文件中
+> 
+> **💡 新手建议**: 只需配置必需参数即可正常使用，其他保持默认值
+> 
+> **🔒 安全说明**: Environment Secrets提供更好的安全性和权限管理，推荐使用
 
 ## 📚 文档
 
@@ -89,7 +112,7 @@
 ## ❓ 快速问答
 
 **Q: 如何开始使用？**  
-A: 1. Fork仓库到你的账号 → 2. 配置Secrets（用户名密码） → 3. 启用Actions工作流 → 4. 程序将每天自动签到
+A: 1. Fork仓库到你的账号 → 2. 创建`98tang-autosign`环境并配置Environment Secrets（用户名密码） → 3. 启用Actions工作流 → 4. 程序将每天自动签到
 
 **Q: 需要配置哪些信息？**  
 A: 必需：`SITE_USERNAME`和`SITE_PASSWORD`；可选：安全提问、Telegram通知等

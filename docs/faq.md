@@ -8,6 +8,30 @@ A: 检查以下几点：
 2. 检查账号密码是否正确
 3. 查看Actions日志了解具体错误信息
 4. 确保仓库已启用Actions功能
+5. 如果使用Environment Secrets，确保 `98tang-autosign` 环境已正确创建和配置
+
+### Q: Environment Secrets和Repository Secrets有什么区别？
+A: 
+- **Environment Secrets (推荐)**: 
+  - 更高的安全性，可以设置环境保护规则
+  - 支持审批流程和部署保护
+  - 便于管理多环境配置
+- **Repository Secrets (兼容)**:
+  - 配置简单，直接在仓库设置中添加
+  - 适合简单的单一环境使用
+  - 系统会自动回退到此模式
+
+### Q: 如何知道当前使用的是哪种配置模式？
+A: 查看Actions运行日志：
+- ✅ "Environment secrets模式: 98tang-autosign" - 使用环境配置
+- ⚠️ "Repository secrets模式 - 回退模式" - 使用仓库配置
+
+### Q: 98tang-autosign环境创建失败或无法访问？
+A: 可能的解决方案：
+1. 确保在正确的仓库中创建环境
+2. 检查环境名称是否完全匹配：`98tang-autosign`
+3. 确保已在环境中添加必需的secrets
+4. 如果仍有问题，系统会自动回退到Repository Secrets模式
 
 ### Q: 本地运行时Chrome驱动问题？
 A: 程序会自动管理Chrome驱动，如遇问题：
