@@ -111,9 +111,14 @@ def main():
         print("🔍 运行在调试模式")
 
     try:
+        # 在CI环境下默认启用DEBUG模式
+        debug_mode = args.debug or is_ci_environment
+        if is_ci_environment and not args.debug:
+            print("🔍 检测到CI环境，自动启用DEBUG模式以获得详细日志")
+        
         # 创建应用实例
         global _app_instance
-        _app_instance = AutoSignApp(config_file=args.config, debug_mode=args.debug)
+        _app_instance = AutoSignApp(config_file=args.config, debug_mode=debug_mode)
         app = _app_instance
 
         # 运行应用

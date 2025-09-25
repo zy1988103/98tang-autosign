@@ -85,7 +85,7 @@ jobs:
         
         # 系统配置（强制设置）
         HEADLESS: 'true'  # Github Action 强制无头模式
-        LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
+        LOG_LEVEL: ${{ vars.LOG_LEVEL || 'DEBUG' }}  # GitHub Actions 默认使用 DEBUG 级别
         MAX_LOG_FILES: ${{ vars.MAX_LOG_FILES || '7' }}
         MAX_RETRIES: ${{ vars.MAX_RETRIES || '3' }}
         TIMEOUT_MINUTES: ${{ vars.TIMEOUT_MINUTES || '5' }}
@@ -188,7 +188,7 @@ jobs:
         
         # 系统配置（强制设置）
         HEADLESS: 'true'  # Github Action 强制无头模式
-        LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
+        LOG_LEVEL: ${{ vars.LOG_LEVEL || 'DEBUG' }}  # GitHub Actions 默认使用 DEBUG 级别
         MAX_LOG_FILES: ${{ vars.MAX_LOG_FILES || '7' }}
         MAX_RETRIES: ${{ vars.MAX_RETRIES || '3' }}
         TIMEOUT_MINUTES: ${{ vars.TIMEOUT_MINUTES || '5' }}
