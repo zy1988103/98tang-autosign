@@ -1,295 +1,277 @@
-# 98tang 自动签到工具
+<div align="center">
 
-🎯 **98tang论坛自动签到工具** - 支持本地运行和Github Actions云端自动执行的智能签到系统
+# 🎯 98tang AutoSign
 
-## ✨ 主要特性
+**智能化98堂论坛自动签到系统 | 支持云端部署 | 拟人化操作**
 
-- 🤖 **全自动签到**: 模拟真实用户行为，自动完成每日签到
-- 🛡️ **安全提问处理**: 智能识别并回答安全提问，提高成功率
-- 👤 **拟人化操作**: 随机延时、随机浏览、智能回复，避免被检测
-- 📱 **Telegram通知**: 实时推送签到结果和日志文件
-- ☁️ **Github Actions**: 支持云端自动运行，无需本地设备
-- 🔧 **灵活配置**: 丰富的配置选项，满足不同使用需求
-- 📝 **详细日志**: 完整的操作记录，便于调试和监控
-- ⚡ **智能重试**: 失败自动重试机制，提高成功率
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/) [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-supported-green.svg)](https://github.com/features/actions) [![Selenium](https://img.shields.io/badge/Selenium-4.15+-orange.svg)](https://selenium-python.readthedocs.io/) 
+[![GitHub stars](https://img.shields.io/github/stars/WizisCool/98tang-autosign?style=social)](https://github.com/WizisCool/98tang-autosign/stargazers) [![GitHub forks](https://img.shields.io/github/forks/WizisCool/98tang-autosign?style=social)](https://github.com/WizisCool/98tang-autosign/network/members)
 
-## 🏗️ 项目结构
+[📖 文档](#-文档) • [🚀 快速开始](#-快速开始) • [⚙️ 配置](#️-配置参数) • [🤝 贡献](#-贡献)
 
-```
-98tang-autosign/
-├── .github/workflows/
-│   └── autosign.yml           # Github Actions工作流
-├── src/                       # 源代码目录
-│   ├── core/                  # 核心功能模块
-│   ├── browser/               # 浏览器相关模块
-│   ├── automation/            # 自动化操作模块
-│   ├── notifications/         # 通知模块
-│   └── utils/                 # 工具模块
-├── main.py                    # 主入口文件
-├── config.env.example         # 配置文件模板
-├── requirements.txt           # 依赖包列表
-├── LICENSE                    # MIT许可证
-└── README.md                  # 项目说明
-```
-
-## 🚀 快速开始
-
-### 方式一：Github Actions (推荐)
-
-#### 1. Fork仓库
-点击页面右上角的"Fork"按钮，将仓库复制到你的账号下。
-
-#### 2. 配置Secrets
-在你的仓库中，进入 `Settings` → `Secrets and variables` → `Actions`，添加以下必需配置：
-
-**必需配置 (Secrets):**
-```
-SITE_USERNAME     # 你的98tang用户名
-SITE_PASSWORD     # 你的98tang密码
-```
-
-**可选配置 (Secrets):**
-```
-# 安全提问配置
-SECURITY_QUESTION    # 安全提问内容
-SECURITY_ANSWER      # 安全提问答案
-
-# Telegram通知配置
-TELEGRAM_BOT_TOKEN   # Telegram机器人Token
-TELEGRAM_CHAT_ID     # Telegram聊天ID
-TELEGRAM_PROXY_URL   # Telegram代理URL（可选）
-```
-
-#### 3. 配置Variables
-在 `Settings` → `Secrets and variables` → `Actions` → `Variables` 标签页，添加以下可选配置：
-
-**基础配置:**
-```
-ENABLE_SECURITY_QUESTION=true    # 启用安全提问处理
-ENABLE_CHECKIN=true              # 启用签到功能
-BASE_URL=https://www.sehuatang.org  # 目标网站URL
-```
-
-**拟人化行为配置:**
-```
-ENABLE_REPLY=true                # 启用随机回复
-REPLY_COUNT=2                    # 回复数量
-ENABLE_RANDOM_BROWSING=true      # 启用随机浏览
-BROWSE_PAGE_COUNT=3              # 浏览页面数量
-REPLY_MESSAGES=感谢分享资源，收藏了;好资源收藏了，谢谢楼主;感谢楼主的精彩分享
-```
-
-**通知配置:**
-```
-ENABLE_TELEGRAM_NOTIFICATION=true  # 启用Telegram通知
-TELEGRAM_SEND_LOG_FILE=false      # 发送日志文件
-```
-
-#### 4. 启用工作流
-1. 进入 `Actions` 标签页
-2. 点击 `98tang Auto Sign-in` 工作流
-3. 点击 `Enable workflow`
-4. 可以点击 `Run workflow` 进行测试
-
-工作流将在每天北京时间上午9点自动运行。
-
-### 方式二：本地运行
-
-#### 1. 环境准备
-确保系统已安装：
-- Python 3.7 或更高版本
-- Google Chrome 浏览器
-
-#### 2. 下载代码
-```bash
-git clone https://github.com/your-username/98tang-autosign.git
-cd 98tang-autosign
-```
-
-#### 3. 安装依赖
-```bash
-pip install -r requirements.txt
-```
-
-#### 4. 配置账号信息
-```bash
-# 复制配置模板
-cp config.env.example config.env
-
-# 编辑配置文件（使用你喜欢的编辑器）
-nano config.env
-```
-
-在 `config.env` 中填写你的账号信息：
-```env
-# 必需配置
-SITE_USERNAME=your_username
-SITE_PASSWORD=your_password
-
-# 可选：启用安全提问处理
-ENABLE_SECURITY_QUESTION=true
-SECURITY_QUESTION=你的安全提问
-SECURITY_ANSWER=你的安全提问答案
-
-# 可选：Telegram通知
-ENABLE_TELEGRAM_NOTIFICATION=true
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
-```
-
-#### 5. 运行程序
-```bash
-python main.py
-```
-
-## ⚙️ 配置说明
-
-### 本地运行配置参数 (config.env)
-
-| 配置项 | 默认值 | 说明 | 必需 |
-|--------|--------|------|------|
-| **基本配置** | | | |
-| `SITE_USERNAME` | - | 98tang用户名 | ✅ |
-| `SITE_PASSWORD` | - | 98tang密码 | ✅ |
-| `BASE_URL` | `https://www.sehuatang.org` | 目标网站URL | ❌ |
-| **核心功能** | | | |
-| `ENABLE_CHECKIN` | `true` | 启用签到功能 | ❌ |
-| `ENABLE_SECURITY_QUESTION` | `false` | 启用安全提问处理 | ❌ |
-| `SECURITY_QUESTION` | - | 安全提问内容 | ❌ |
-| `SECURITY_ANSWER` | - | 安全提问答案 | ❌ |
-| **拟人化行为** | | | |
-| `ENABLE_REPLY` | `true` | 启用随机回复 | ❌ |
-| `REPLY_COUNT` | `2` | 回复数量 (1-5) | ❌ |
-| `ENABLE_RANDOM_BROWSING` | `true` | 启用随机浏览 | ❌ |
-| `BROWSE_PAGE_COUNT` | `3` | 浏览页面数量 (1-10) | ❌ |
-| `COMMENT_INTERVAL` | `15` | 回复间隔时间(秒) | ❌ |
-| `WAIT_AFTER_LOGIN` | `5` | 登录后等待时间(秒) | ❌ |
-| `REPLY_MESSAGES` | 预设回复内容 | 回复消息模板(用`;`分隔) | ❌ |
-| **通知配置** | | | |
-| `ENABLE_TELEGRAM_NOTIFICATION` | `false` | 启用Telegram通知 | ❌ |
-| `TELEGRAM_BOT_TOKEN` | - | Telegram机器人Token | ❌ |
-| `TELEGRAM_CHAT_ID` | - | Telegram聊天ID | ❌ |
-| `TELEGRAM_PROXY_URL` | - | Telegram代理URL | ❌ |
-| `TELEGRAM_SEND_LOG_FILE` | `true` | 发送日志文件 | ❌ |
-| **系统配置** | | | |
-| `HEADLESS` | `true` | 无头模式运行 | ❌ |
-| `LOG_LEVEL` | `debug` | 日志级别 (DEBUG/INFO/WARNING/ERROR) | ❌ |
-| `LOG_DIR` | `logs` | 日志保存目录 | ❌ |
-| `MAX_LOG_FILES` | `7` | 最大日志文件数 | ❌ |
-| **高级配置** | | | |
-| `TIMING_MULTIPLIER` | `1.0` | 延时倍数 (0.5-3.0) | ❌ |
-| `ENABLE_SMART_TIMING` | `true` | 启用智能延时 | ❌ |
-| `MAX_RETRIES` | `3` | 最大重试次数 | ❌ |
-| `TIMEOUT_MINUTES` | `5` | 超时时间(分钟) | ❌ |
-
-### Github Actions 配置参数
-
-#### Secrets (敏感信息)
-| 配置项 | 说明 | 必需 |
-|--------|------|------|
-| `SITE_USERNAME` | 98tang用户名 | ✅ |
-| `SITE_PASSWORD` | 98tang密码 | ✅ |
-| `SECURITY_QUESTION` | 安全提问内容 | ❌ |
-| `SECURITY_ANSWER` | 安全提问答案 | ❌ |
-| `TELEGRAM_BOT_TOKEN` | Telegram机器人Token | ❌ |
-| `TELEGRAM_CHAT_ID` | Telegram聊天ID | ❌ |
-| `TELEGRAM_PROXY_URL` | Telegram代理URL | ❌ |
-
-#### Variables (公开配置)
-| 配置项 | 默认值 | 说明 | 必需 |
-|--------|--------|------|------|
-| **基本功能** | | | |
-| `BASE_URL` | `https://www.sehuatang.org` | 目标网站URL | ❌ |
-| `ENABLE_CHECKIN` | `true` | 启用签到功能 | ❌ |
-| `ENABLE_SECURITY_QUESTION` | `false` | 启用安全提问处理 | ❌ |
-| **拟人化行为** | | | |
-| `ENABLE_REPLY` | `false` | 启用随机回复 | ❌ |
-| `REPLY_COUNT` | `2` | 回复数量 | ❌ |
-| `ENABLE_RANDOM_BROWSING` | `false` | 启用随机浏览 | ❌ |
-| `BROWSE_PAGE_COUNT` | `3` | 浏览页面数量 | ❌ |
-| `COMMENT_INTERVAL` | `15` | 回复间隔时间(秒) | ❌ |
-| `WAIT_AFTER_LOGIN` | `5` | 登录后等待时间(秒) | ❌ |
-| `REPLY_MESSAGES` | 预设回复内容 | 回复消息模板(用`;`分隔) | ❌ |
-| **通知配置** | | | |
-| `ENABLE_TELEGRAM_NOTIFICATION` | `false` | 启用Telegram通知 | ❌ |
-| `TELEGRAM_SEND_LOG_FILE` | `false` | 发送日志文件 | ❌ |
-| **系统配置** | | | |
-| `LOG_LEVEL` | `INFO` | 日志级别 | ❌ |
-| `MAX_LOG_FILES` | `7` | 最大日志文件数 | ❌ |
-| `TIMING_MULTIPLIER` | `1.0` | 延时倍数 | ❌ |
-| `ENABLE_SMART_TIMING` | `true` | 启用智能延时 | ❌ |
-| `MAX_RETRIES` | `3` | 最大重试次数 | ❌ |
-| `TIMEOUT_MINUTES` | `5` | 超时时间(分钟) | ❌ |
-
-> **注意**: 
-> - ✅ 表示必需配置，❌ 表示可选配置
-> - Github Actions中 `HEADLESS` 强制为 `true`
-> - Secrets用于存储敏感信息，Variables用于存储公开配置
-
-## ❓ 常见问题
-
-### Q: Github Actions运行失败怎么办？
-A: 检查以下几点：
-1. 确保已正确配置 `SITE_USERNAME` 和 `SITE_PASSWORD`
-2. 检查账号密码是否正确
-3. 查看Actions日志了解具体错误信息
-4. 确保仓库已启用Actions功能
-
-### Q: 本地运行时Chrome驱动问题？
-A: 程序会自动管理Chrome驱动，如遇问题：
-```bash
-pip install --upgrade selenium webdriver-manager
-```
-
-### Q: 如何修改签到时间？
-A: 编辑 `.github/workflows/autosign.yml` 文件中的 `cron` 表达式：
-```yaml
-schedule:
-  - cron: '0 1 * * *'  # UTC时间1点 = 北京时间9点
-```
-
-### Q: 安全提问如何配置？
-A: 登录网站查看你的安全提问，然后在配置中填写：
-```env
-SECURITY_QUESTION=你设置的安全提问
-SECURITY_ANSWER=对应的答案
-```
-
-### Q: Telegram通知收不到？
-A: 检查以下配置：
-1. 机器人Token是否正确
-2. Chat ID是否正确
-3. 机器人是否已添加到对应群组
-4. 网络是否能访问Telegram API
-
-## 🤝 贡献指南
-
-欢迎提交Issue和Pull Request！
-
-### 提交Issue
-- 使用清晰的标题描述问题
-- 提供详细的复现步骤
-- 附上相关的日志信息
-
-### 提交代码
-1. Fork本仓库
-2. 创建特性分支: `git checkout -b feature/new-feature`
-3. 提交更改: `git commit -m 'Add new feature'`
-4. 推送分支: `git push origin feature/new-feature`
-5. 创建Pull Request
-
-## 📄 许可证
-
-本项目采用 [MIT许可证](LICENSE)。
-
-## ⚠️ 免责声明
-
-本工具仅供学习和研究使用。使用者应遵守目标网站的使用条款和相关法律法规。作者不承担任何因使用本工具而产生的责任。
-
-## 🌟 支持项目
-
-如果这个项目对你有帮助，欢迎给个Star ⭐️
+</div>
 
 ---
 
-**Happy Coding! 🚀**
+## ✨ 核心特性
+
+<table>
+<tr>
+<td width="50%">
+
+### 🤖 拟人化系统
+- **智能登录**: 无Cookies依赖的深度登录模拟
+- **拟人化浏览**: 基于页面Payload智能分配行为
+- **智能回帖**: 待完善
+- **多选择器**: 使用多种选择器确保长期可用
+
+</td>
+<td width="50%">
+
+### 🛡️ 反检测技术
+- **反脚本检测**: 使用undetected-chromedriver
+- **行为分析**: 根据页面复杂程度判断行为
+- **拟人操作**: 根据行为模拟滚动等真人操作
+- **逻辑模拟**: 不直接访问URL采用模拟点击
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### ☁️ 云端部署
+- **GitHub Actions**: 免费的云端自动运行
+- **一键部署**: 不需要复杂本地环境搭建
+- **随机调度**: 每日0:00~0:30随机时间执行
+- **日志保存**: 30天的运行日志，方便排查问题
+
+</td>
+<td width="50%">
+
+### 📱 消息通知
+- **Telegram推送**: 定时签到结果通知
+- **截图功能**: 真实的浏览器截图推送
+- **日志推送**: 详细的DEBUG日志推送
+- **错误提醒**: 统一集中的错误管理
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🏗️ 项目架构
+
+```
+98tang-autosign/
+├── 📁 .github/workflows/    # GitHub Actions 工作流
+│   └── autosign.yml         # 自动签到工作流配置
+├── 📁 src/                  # 核心源代码
+│   ├── 📁 automation/       # 自动化逻辑模块
+│   ├── 📁 browser/          # 浏览器操作封装
+│   ├── 📁 core/             # 核心功能模块
+│   ├── 📁 notifications/    # 通知系统
+│   └── 📁 utils/            # 工具函数库
+├── 📁 docs/                 # 项目文档
+│   ├── installation.md     # 详细安装指南
+│   ├── configuration.md    # 完整配置文档
+│   ├── faq.md              # 常见问题解答
+│   └── contributing.md     # 贡献者指南
+├── 📄 main.py              # 程序入口文件
+├── 📄 config.env.example   # 配置文件模板
+├── 📄 requirements.txt     # Python依赖列表
+└── 📄 README.md           # 项目说明文档
+```
+
+---
+
+## 🚀 快速开始
+
+### 🎯 方式一：GitHub Actions（推荐）
+
+> ✅ **零成本 | 免维护 | 自动运行**
+
+<details>
+<summary>🔧 <b>点击展开详细配置步骤</b></summary>
+
+#### 1️⃣ Fork 仓库
+点击页面右上角 **Fork** 按钮，将项目复制到您的账号下
+
+#### 2️⃣ 配置环境变量（推荐方式）
+1. 进入您的仓库 → `Settings` → `Environments`
+2. 创建新环境，名称：`98tang-autosign`
+3. 在 Environment secrets 中添加：
+   ```
+   SITE_USERNAME     # 您的98tang用户名
+   SITE_PASSWORD     # 您的98tang密码
+   ```
+
+#### 3️⃣ 启用工作流
+1. 进入 `Actions` 标签页
+2. 点击 `98tang Auto Sign-in` 工作流
+3. 点击 `Enable workflow` 启用
+4. 可选：点击 `Run workflow` 立即测试
+
+#### 4️⃣ 验证配置
+查看 Actions 运行日志：
+- ✅ `Environment secrets模式: 98tang-autosign` - 配置成功
+- ⚠️ `Repository secrets模式 - 回退模式` - 使用备用配置
+
+</details>
+
+### 🖥️ 方式二：本地运行
+
+<details>
+<summary>💻 <b>点击展开本地部署步骤</b></summary>
+
+#### 环境要求
+- Python 3.7+ 
+- Google Chrome 浏览器
+
+#### 安装步骤
+```bash
+# 1. 克隆仓库
+git clone https://github.com/your-username/98tang-autosign.git
+cd 98tang-autosign
+
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 配置账号信息
+cp config.env.example config.env
+# 编辑 config.env 文件，填入您的账号信息
+
+# 4. 运行程序
+python main.py
+```
+
+</details>
+
+---
+
+## ⚙️ 配置参数
+
+### 🔑 必备配置
+
+| 参数名 | 说明 | 示例值 |
+|--------|------|--------|
+| `SITE_USERNAME` | 98tang论坛用户名 | `your_username` |
+| `SITE_PASSWORD` | 98tang论坛密码 | `your_password` |
+
+### 📋 完整配置说明
+
+本项目支持高度自定义配置参数，涵盖以下功能模块：
+
+- 🔐 **基础配置**: 账号信息、网站设置
+- 🛡️ **安全提问**: 安全验证配置  
+- 📱 **Telegram通知**: 消息推送、文件发送
+- 🤖 **拟人化行为**: 随机回复、浏览行为
+- ⚡ **高级设置**: 性能调优、调试选项
+
+> 📖 **详细配置文档**: [configuration.md](docs/configuration.md)  
+> 包含所有参数的详细说明、默认值、示例和使用注意事项
+
+
+
+### 💡 配置方式对比
+
+| 配置方式 | 安全性 | 易用性 | 推荐度 | 适用场景 |
+|----------|--------|--------|--------|----------|
+| **Environment Secrets** | 🔒🔒🔒 | ⭐⭐⭐ | ✅ **推荐** | 因为是我用的 |
+| **Repository Secrets** | 🔒🔒 | ⭐⭐⭐⭐ | ✅ 备用 | 个人项目，快速配置 |
+| **本地配置文件** | 🔒 | ⭐⭐⭐⭐⭐ | 💻 开发 | 本地开发部署 |
+
+---
+
+## 📚 文档
+
+| 文档 | 描述 | 链接 |
+|------|------|------|
+| 📦 **安装指南** | 详细的安装和配置步骤 | [installation.md](docs/installation.md) |
+| ⚙️ **配置文档** | 完整的配置参数说明 | [configuration.md](docs/configuration.md) |
+| ❓ **常见问题** | FAQ和故障排除 | [faq.md](docs/faq.md) |
+| 🤝 **贡献指南** | 参与项目开发指南 | [contributing.md](docs/contributing.md) |
+
+---
+
+## 📊 使用统计
+
+<div align="center">
+
+![GitHub repo size](https://img.shields.io/github/repo-size/WizisCool/98tang-autosign) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/WizisCool/98tang-autosign) ![GitHub last commit](https://img.shields.io/github/last-commit/WizisCool/98tang-autosign)
+
+</div>
+
+---
+
+## 🔄 更新日志
+
+### 🆕 最新版本 v2.1.0
+- ✨ 新增智能签到状态检测
+- 🛡️ 修复统计信息误判问题  
+- 📱 优化Telegram通知机制
+- 🎨 全新专业化README设计
+- 🔧 增强GitHub Actions稳定性
+
+<details>
+<summary>查看完整更新历史</summary>
+
+### v2.0.0
+- 🚀 重构核心架构，模块化设计
+- ☁️ 完善GitHub Actions支持
+- 📱 集成Telegram通知系统
+- 🤖 增强拟人化行为模拟
+
+### v1.5.0  
+- 🛡️ 新增安全提问处理
+- 🎯 优化签到成功率
+- 📝 完善文档和配置说明
+
+</details>
+
+---
+
+## 🤝 贡献
+
+我们欢迎所有形式的贡献！
+
+### 💝 贡献方式
+
+- 🐛 **报告Bug**: [提交Issue](https://github.com/WizisCool/98tang-autosign/issues/new?template=bug_report.md)
+- 💡 **功能建议**: [功能请求](https://github.com/WizisCool/98tang-autosign/issues/new?template=feature_request.md)  
+- 🔧 **代码贡献**: [提交PR](https://github.com/WizisCool/98tang-autosign/pulls)
+- 📖 **文档改进**: 帮助完善文档
+
+### 👥 贡献者
+
+感谢所有为项目做出贡献的开发者！
+
+<a href="https://github.com/WizisCool/98tang-autosign/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=WizisCool/98tang-autosign" />
+</a>
+
+---
+
+## 📄 许可证
+
+本项目采用 [MIT 许可证](LICENSE) - 查看 LICENSE 文件了解详情
+
+---
+
+## ⚠️ 免责声明
+
+本工具仅供学习和研究使用。使用者应遵守目标网站的使用条款和相关法律法规。开发者不对使用本工具产生的任何后果承担责任。
+
+---
+
+<div align="center">
+
+**如果这个项目对您有帮助，请给个 ⭐ Star 支持一下！**
+
+[![Star History Chart](https://api.star-history.com/svg?repos=WizisCool/98tang-autosign&type=Date)](https://star-history.com/#WizisCool/98tang-autosign&Date)
+
+---
+
+*Develop by WizisCool*
+
+</div>

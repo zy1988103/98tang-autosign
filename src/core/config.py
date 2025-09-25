@@ -64,10 +64,18 @@ class ConfigManager:
             }
         )
 
+        # 登录安全配置 - 默认启用
+        self._config.update(
+            {
+                "detect_account_lockout": True,
+                "lockout_wait_minutes": 15,
+            }
+        )
+
         # 拟人化行为配置
         self._config.update(
             {
-                "enable_reply": os.getenv("ENABLE_REPLY", "false").lower() == "true",
+                "enable_reply": os.getenv("ENABLE_REPLY", "true").lower() == "true",
                 "reply_count": int(os.getenv("REPLY_COUNT", "2")),
                 "enable_random_browsing": os.getenv(
                     "ENABLE_RANDOM_BROWSING", "true"
@@ -120,6 +128,10 @@ class ConfigManager:
                     "TELEGRAM_SEND_LOG_FILE", "false"
                 ).lower()
                 == "true",
+                "TELEGRAM_SEND_SCREENSHOT": os.getenv(
+                    "TELEGRAM_SEND_SCREENSHOT", "false"
+                ).lower()
+                == "true",
             }
         )
 
@@ -130,10 +142,12 @@ class ConfigManager:
 
         # 安全保护配置
         timeout_minutes = int(os.getenv("TIMEOUT_MINUTES", "5"))
+        max_retries = int(os.getenv("MAX_RETRIES", "3"))
         self._config.update(
             {
                 "timeout_minutes": max(1, timeout_minutes),  # 最少1分钟
                 "timeout_seconds": max(60, timeout_minutes * 60),  # 转换为秒
+                "max_retries": max(1, max_retries),  # 最少1次重试
             }
         )
 
@@ -297,6 +311,7 @@ class ConfigManager:
             "TELEGRAM_CHAT_ID": self._config["TELEGRAM_CHAT_ID"],
             "TELEGRAM_PROXY_URL": self._config["TELEGRAM_PROXY_URL"],
             "TELEGRAM_SEND_LOG_FILE": self._config["TELEGRAM_SEND_LOG_FILE"],
+            "TELEGRAM_SEND_SCREENSHOT": self._config["TELEGRAM_SEND_SCREENSHOT"],
         }
 
     def get_security_config(self) -> Dict[str, Any]:
@@ -304,4 +319,5 @@ class ConfigManager:
         return {
             "timeout_minutes": self._config["timeout_minutes"],
             "timeout_seconds": self._config["timeout_seconds"],
+            "max_retries": self._config["max_retries"],
         }

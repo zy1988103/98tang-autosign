@@ -97,8 +97,8 @@ class LoggerManager:
         console_handler.setFormatter(formatter)
         self._logger.addHandler(console_handler)
 
-        # 文件处理器
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        # 文件处理器 - 添加编码错误处理，确保在CI环境中的兼容性
+        file_handler = logging.FileHandler(log_file, encoding="utf-8", errors="replace")
         file_handler.setFormatter(formatter)
         self._logger.addHandler(file_handler)
 

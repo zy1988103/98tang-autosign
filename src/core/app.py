@@ -20,8 +20,11 @@ from ..notifications.telegram import (
     TelegramNotifier,
     TaskResult,
     ExecutionSummary,
+    NotificationData,
 )
 from ..utils.timeout_protection import TimeoutProtectionContext
+from ..utils.encoding import EncodingHelper
+from ..utils.screenshot_helper import ScreenshotHelper
 
 
 class AutoSignApp:
@@ -42,6 +45,9 @@ class AutoSignApp:
 
         # 初始化日志管理器
         logging_config = self.config_manager.get_logging_config()
+        # 设置编码环境，确保CI环境兼容性
+        EncodingHelper.setup_encoding_environment()
+
         self.logger_manager = LoggerManager()
         self.logger = self.logger_manager.setup_logger(
             name=__name__,
@@ -53,7 +59,8 @@ class AutoSignApp:
 
         # 初始化其他组件
         self.browser_manager = BrowserDriverManager(self.logger)
-        self.retry_manager = RetryManager(max_retries=3)
+        security_config = self.config_manager.get_security_config()
+        self.retry_manager = RetryManager(max_retries=security_config["max_retries"])
 
         # 业务逻辑管理器
         self.signin_manager: Optional[SignInManager] = None
@@ -139,8 +146,131 @@ class AutoSignApp:
 
         # 不再发送单个任务通知，只在最后发送摘要
 
+    def _capture_debug_files(self) -> tuple[Optional[str], Optional[str]]:
+        """
+        捕获调试文件（截图和HTML源代码）
+
+        Returns:
+            (screenshot_path, html_path): 截图文件路径和HTML文件路径的元组
+        """
+        screenshot_path = None
+        html_path = None
+
+        try:
+            if self.browser_manager and self.browser_manager.driver:
+                # 创建调试文件目录
+                debug_dir = os.path.join("logs", "debug")
+                os.makedirs(debug_dir, exist_ok=True)
+
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
+                # 捕获截图
+                try:
+                    screenshot_path = os.path.join(
+                        debug_dir, f"error_screenshot_{timestamp}.png"
+                    )
+                    self.browser_manager.driver.save_screenshot(screenshot_path)
+                    self.logger.debug(f"错误截图已保存: {screenshot_path}")
+                except Exception as e:
+                    self.logger.warning(f"捕获错误截图失败: {e}")
+                    screenshot_path = None
+
+                # 捕获HTML源代码
+                try:
+                    html_path = os.path.join(
+                        debug_dir, f"error_source_{timestamp}.html"
+                    )
+                    page_source = self.browser_manager.driver.page_source
+
+                    # 使用编码助手安全地保存HTML源代码
+                    if EncodingHelper.safe_write_text(html_path, page_source):
+                        self.logger.debug(f"错误HTML源代码已保存: {html_path}")
+                    else:
+                        self.logger.warning("错误HTML源代码保存失败")
+                        html_path = None
+                except Exception as e:
+                    self.logger.warning(f"捕获错误HTML源代码失败: {e}")
+                    html_path = None
+
+        except Exception as e:
+            self.logger.warning(f"捕获调试文件失败: {e}")
+
+        return screenshot_path, html_path
+
+    def _send_error_with_log(self, error_message: str, error_title: str) -> None:
+        """发送统一的错误通知（包含所有相关文件和信息）"""
+        if not self.telegram_notifier:
+            return
+
+        try:
+            # 准备所有文件路径
+            log_file_path = None
+            screenshot_path = None
+            html_path = None
+            include_live_screenshot = False
+            live_screenshot_context = None
+
+            # 捕获调试文件
+            if self.config_manager.get("TELEGRAM_SEND_LOG_FILE", False):
+                screenshot_path, html_path = self._capture_debug_files()
+
+                # 获取日志文件
+                current_log_file = self.logger_manager.get_current_log_file()
+                if current_log_file and os.path.exists(current_log_file):
+                    log_file_path = current_log_file
+
+            # 检查是否需要实时截图
+            if (
+                self.config_manager.get("TELEGRAM_SEND_SCREENSHOT", False)
+                and hasattr(self, "browser_manager")
+                and self.browser_manager
+                and hasattr(self.browser_manager, "driver")
+                and self.browser_manager.driver
+            ):
+                include_live_screenshot = True
+                live_screenshot_context = f"执行过程中发生错误: {error_title}"
+
+            # 创建统一的错误通知数据包
+            notification_data = self.telegram_notifier.create_error_notification(
+                error_message=error_message,
+                error_type=error_title,
+                log_file_path=log_file_path,
+                screenshot_path=screenshot_path,
+                html_path=html_path,
+                include_live_screenshot=include_live_screenshot,
+                live_screenshot_context=live_screenshot_context,
+            )
+
+            # 发送统一通知
+            success = self.telegram_notifier.send_batch_notification(notification_data)
+
+            if success:
+                self.logger.debug("统一错误通知已发送到Telegram")
+            else:
+                self.logger.warning("统一错误通知发送失败")
+
+            # 发送实时截图（如果启用）
+            if include_live_screenshot:
+                try:
+                    screenshot_helper = ScreenshotHelper(
+                        telegram_notifier=self.telegram_notifier
+                    )
+                    screenshot_helper.capture_and_send_screenshot(
+                        driver=self.browser_manager.driver,
+                        scenario="execution_error",
+                        description=live_screenshot_context,
+                    )
+                    self.logger.debug("实时错误截图已发送到Telegram")
+                except Exception as live_screenshot_error:
+                    self.logger.warning(
+                        f"发送实时错误截图失败: {live_screenshot_error}"
+                    )
+
+        except Exception as notify_error:
+            self.logger.warning(f"发送错误通知时出错: {notify_error}")
+
     def _send_execution_summary(self, overall_success: bool) -> None:
-        """发送执行摘要"""
+        """发送统一的执行摘要通知（包含所有相关文件和信息）"""
         if not self.telegram_notifier or not self.execution_start_time:
             return
 
@@ -168,19 +298,56 @@ class AutoSignApp:
                 overall_success=overall_success,
             )
 
-            # 发送摘要
-            self.telegram_notifier.send_summary(summary)
-            self.logger.debug("执行摘要已发送到Telegram")
+            # 准备附件信息
+            log_file_path = None
+            include_live_screenshot = False
+            live_screenshot_context = None
 
-            # 如果配置了发送日志文件，则发送当前日志文件
-            if self.config_manager.get("TELEGRAM_SEND_LOG_FILE", False):
+            # 只在执行成功时发送日志文件（避免与错误通知重复推送）
+            if overall_success and self.config_manager.get(
+                "TELEGRAM_SEND_LOG_FILE", False
+            ):
                 current_log_file = self.logger_manager.get_current_log_file()
                 if current_log_file and os.path.exists(current_log_file):
-                    try:
-                        self.telegram_notifier.send_log_file(current_log_file)
-                        self.logger.debug("日志文件已发送到Telegram")
-                    except Exception as log_error:
-                        self.logger.warning(f"发送日志文件失败: {log_error}")
+                    log_file_path = current_log_file
+
+            # 检查是否需要成功截图
+            if overall_success and self.config_manager.get(
+                "TELEGRAM_SEND_SCREENSHOT", False
+            ):
+                include_live_screenshot = True
+                live_screenshot_context = "签到任务执行成功"
+
+            # 创建统一的成功通知数据包
+            notification_data = self.telegram_notifier.create_success_notification(
+                summary=summary,
+                log_file_path=log_file_path,
+                include_live_screenshot=include_live_screenshot,
+                live_screenshot_context=live_screenshot_context,
+            )
+
+            # 发送统一通知
+            success = self.telegram_notifier.send_batch_notification(notification_data)
+
+            if success:
+                self.logger.debug("统一执行摘要已发送到Telegram")
+            else:
+                self.logger.warning("统一执行摘要发送失败")
+
+            # 发送实时截图（如果启用且成功）
+            if include_live_screenshot:
+                try:
+                    screenshot_helper = ScreenshotHelper(
+                        telegram_notifier=self.telegram_notifier
+                    )
+                    screenshot_helper.capture_and_send_screenshot(
+                        driver=self.browser_manager.driver,
+                        scenario="execution_success",
+                        description=live_screenshot_context,
+                    )
+                    self.logger.debug("执行成功截图已发送到Telegram")
+                except Exception as screenshot_error:
+                    self.logger.warning(f"发送执行成功截图失败: {screenshot_error}")
 
         except Exception as e:
             self.logger.warning(f"发送Telegram执行摘要失败: {e}")
@@ -250,16 +417,31 @@ class AutoSignApp:
             except Exception as e:
                 retry_count = self.retry_manager.get_retry_count(operation)
                 remaining = self.retry_manager.get_remaining_retries(operation)
+
+                # 检查是否是账号锁定错误
+                if "账号锁定" in str(e) or "密码错误次数过多" in str(e):
+                    self.logger.error(f"账号被锁定，停止重试: {e}")
+                    return False  # 账号锁定时不继续重试
+
                 self.logger.error(
                     f"登录过程出错: {e}，第 {retry_count} 次尝试，还剩 {remaining} 次重试机会"
                 )
 
-        self.logger.error("登录重试次数已达上限")
+        error_msg = "登录重试次数已达上限"
+        self.logger.error(error_msg)
+
+        # 不在这里发送错误通知，由调用方统一处理
+        # 避免重复通知，统一在 run() 方法中发送最终报告
+
         return False
 
     def _perform_humanlike_activities(self) -> None:
         """执行拟人化活动"""
-        if not self.config_manager.get("enable_humanlike", False):
+        # 检查两个拟人化功能是否都禁用
+        enable_reply = self.config_manager.get("enable_reply", True)
+        enable_browsing = self.config_manager.get("enable_random_browsing", True)
+
+        if not enable_reply and not enable_browsing:
             self.logger.info("拟人化活动已禁用")
             self._record_task_result("browse", True, "拟人化活动已禁用，跳过执行")
             return
@@ -294,13 +476,21 @@ class AutoSignApp:
                 self._record_task_result("signin", True, "签到执行成功")
                 return True
             else:
-                self.logger.error("签到失败")
+                error_msg = "签到失败"
+                self.logger.error(error_msg)
                 self._record_task_result("signin", False, "签到执行失败")
+
+                # 注意：这里不发送错误通知，由run()方法统一处理
+
                 return False
 
         except Exception as e:
-            self.logger.error(f"签到过程出错: {e}")
+            error_msg = f"签到过程出错: {e}"
+            self.logger.error(error_msg)
             self._record_task_result("signin", False, "签到过程出错", str(e))
+
+            # 注意：这里不发送错误通知，由run()方法统一处理
+
             return False
 
     def run(self) -> bool:
@@ -322,6 +512,10 @@ class AutoSignApp:
             # 记录开始时间
             self.execution_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+            # 执行结果标志
+            execution_success = False
+            last_error_message = "程序执行过程中出现未知错误"
+
             try:
                 self.logger.info("开始98tang-autosign程序")
 
@@ -331,21 +525,24 @@ class AutoSignApp:
                 # 步骤1: 创建浏览器
                 self.logger.debug("步骤1: 创建浏览器驱动")
                 if not self._create_browser():
-                    self.logger.error("浏览器驱动创建失败")
+                    last_error_message = "浏览器驱动创建失败"
+                    self.logger.error(last_error_message)
                     return False
                 self.logger.debug("浏览器驱动创建成功")
 
                 # 步骤2: 初始化业务管理器
                 self.logger.debug("步骤2: 初始化业务管理器")
                 if not self._initialize_managers():
-                    self.logger.error("业务管理器初始化失败")
+                    last_error_message = "业务管理器初始化失败"
+                    self.logger.error(last_error_message)
                     return False
                 self.logger.debug("业务管理器初始化成功")
 
                 # 步骤3: 登录
                 self.logger.debug("步骤3: 执行登录流程")
                 if not self._login_with_retry():
-                    self.logger.error("登录失败")
+                    last_error_message = "登录失败"
+                    self.logger.error(last_error_message)
                     return False
                 self.logger.debug("登录流程完成")
 
@@ -356,34 +553,43 @@ class AutoSignApp:
                 # 步骤5: 签到
                 self.logger.debug("步骤5: 执行签到流程")
                 if not self._perform_signin():
-                    self.logger.error("签到失败")
+                    # 从任务结果中获取更详细的错误信息
+                    signin_result = next(
+                        (r for r in self.task_results if r["task"] == "signin"), None
+                    )
+                    if signin_result and not signin_result["success"]:
+                        last_error_message = signin_result.get(
+                            "error_details"
+                        ) or signin_result.get("message", "签到失败")
+                    else:
+                        last_error_message = "签到失败"
+                    self.logger.error(last_error_message)
                     return False
 
                 self.logger.info("程序执行完成")
-                # 发送成功摘要
-                self._send_execution_summary(True)
+                execution_success = True
                 return True
 
             except Exception as e:
-                self.logger.error(f"程序运行失败: {e}")
+                last_error_message = f"程序运行异常: {str(e)}"
+                self.logger.error(last_error_message)
                 if self.debug_mode:
                     import traceback
 
                     self.logger.debug(f"详细错误信息: {traceback.format_exc()}")
-
-                # 发送失败摘要
-                self._send_execution_summary(False)
-
-                # 发送错误通知
-                if self.telegram_notifier:
-                    try:
-                        self.telegram_notifier.send_error(str(e), "程序执行异常")
-                    except Exception:
-                        pass  # 避免通知发送失败影响主程序
-
                 return False
 
             finally:
+                # 统一发送执行报告（无论成功或失败）
+                if execution_success:
+                    # 发送成功摘要
+                    self._send_execution_summary(True)
+                else:
+                    # 发送失败摘要和错误通知
+                    self._send_execution_summary(False)
+                    self._send_error_with_log(last_error_message, "程序执行失败")
+
+                # 清理资源
                 self._cleanup()
 
     def _log_debug_info(self) -> None:

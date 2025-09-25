@@ -94,6 +94,12 @@ class SignInManager:
         try:
             self.logger.debug("开始检查登录状态")
 
+            # 首先检查是否有登录错误消息
+            error_message = self.check_login_error_message()
+            if error_message:
+                self.logger.error(f"登录失败，错误信息: {error_message}")
+                return False
+
             username_selectors = [
                 f"//strong[contains(text(), '{self.username}')]",
                 f"//a[contains(text(), '{self.username}')]",
@@ -137,6 +143,73 @@ class SignInManager:
         except Exception as e:
             self.logger.warning(f"检查登录状态失败: {e}")
             return False
+
+    def check_login_error_message(self) -> Optional[str]:
+        """
+        检查登录错误消息
+
+        Returns:
+            错误消息文本，如果没有错误则返回None
+        """
+        try:
+            # 检查页面源代码中的JavaScript错误处理
+            page_source = self.driver.page_source
+
+            # 检查密码错误次数过多的提示
+            if "密码错误次数过多" in page_source:
+                import re
+
+                # 提取具体的错误消息
+                error_pattern = r"errorhandle_login\('([^']+)'"
+                match = re.search(error_pattern, page_source)
+                if match:
+                    error_msg = match.group(1)
+                    self.logger.warning(f"检测到账号锁定: {error_msg}")
+                    return error_msg
+                return "密码错误次数过多，账号已被临时锁定"
+
+            # 检查其他常见的登录错误消息
+            error_indicators = [
+                "用户名或密码错误",
+                "账号已被禁用",
+                "验证码错误",
+                "安全提问答案错误",
+                "登录失败",
+                "请重新登录",
+            ]
+
+            for error_text in error_indicators:
+                if error_text in page_source:
+                    return error_text
+
+            # 检查弹窗中的错误消息
+            error_selectors = [
+                "#ntcwin .pc_inner i",  # 错误弹窗
+                "#returnmessage_Luu4S",  # 登录返回消息
+                ".alert_error",  # 错误提示
+                ".error",  # 通用错误
+            ]
+
+            for selector in error_selectors:
+                try:
+                    error_element = self.element_finder.find_by_selectors(
+                        [selector], timeout=1
+                    )
+                    if error_element and error_element.text.strip():
+                        error_text = error_element.text.strip()
+                        if any(
+                            keyword in error_text
+                            for keyword in ["错误", "失败", "禁用"]
+                        ):
+                            return error_text
+                except:
+                    continue
+
+            return None
+
+        except Exception as e:
+            self.logger.debug(f"检查登录错误消息时出错: {e}")
+            return None
 
     def fill_login_form(self) -> bool:
         """
@@ -322,12 +395,20 @@ class SignInManager:
 
             # 验证登录结果
             self.logger.debug("验证登录结果")
-            if self.check_login_status():
+            login_result = self.check_login_status()
+            if login_result:
                 self.logger.info("登录成功")
                 return True
             else:
-                self.logger.warning("登录失败")
-                return False
+                # 检查是否是账号锁定
+                error_message = self.check_login_error_message()
+                if error_message and "密码错误次数过多" in error_message:
+                    self.logger.error(f"账号被锁定: {error_message}")
+                    # 如果是账号锁定，不要继续重试，直接返回失败
+                    raise Exception(f"账号锁定: {error_message}")
+                else:
+                    self.logger.warning("登录失败")
+                    return False
 
         except Exception as e:
             self.logger.error(f"登录过程出错: {e}")
@@ -446,56 +527,97 @@ class SignInManager:
             self.driver.get(self.home_url)
             TimingManager.smart_wait(TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger)
 
-            # 点击签到导航
-            sign_nav_selectors = [
-                'a[href="plugin.php?id=dd_sign:index"]',
-                'a[href*="dd_sign"]',
-            ]
-
-            sign_nav_link = self.element_finder.find_clickable_by_selectors(
-                sign_nav_selectors
-            )
-            if not sign_nav_link:
-                self.logger.error("未找到签到导航链接")
+            # 尝试进入签到页面，最多重试3次
+            if not self._navigate_to_signin_page():
+                self.logger.error("无法进入签到页面")
                 return False
 
-            BrowserHelper.safe_click(self.driver, sign_nav_link, self.logger)
-            TimingManager.smart_wait(TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger)
-
             # 检查签到状态
-            self.logger.debug("检查签到状态，查找签到按钮区域")
-            sign_area_selectors = [
-                ".ddpc_sign_btna",
-                'div[class*="sign_btn"]',
-                ".sign-area",
-            ]
+            signin_status = self._check_signin_status()
 
-            sign_area = self.element_finder.find_by_selectors(sign_area_selectors)
-            if sign_area:
-                sign_area_text = sign_area.text.strip()
-                self.logger.debug(f"签到区域文本: {sign_area_text}")
-
-                # 如果按钮文本包含"未签到"或"点击签到"，说明还未签到
-                if any(keyword in sign_area_text for keyword in ["未签到", "点击签到"]):
-                    self.logger.debug("检测到未签到状态，需要执行签到")
-                else:
-                    self.logger.info("今日已签到")
-                    return True
+            if signin_status == "already_signed":
+                self.logger.info("✅ 今日已签到")
+                return True
+            elif signin_status == "need_signin":
+                self.logger.info("检测到未签到状态，开始执行签到")
+                # 继续执行签到流程
             else:
-                # 备用检测方法：检查整个页面
-                self.logger.debug("未找到签到区域，使用备用检测方法")
-                page_text = self.driver.execute_script(
-                    "return document.body.innerText;"
-                )
-                if (
-                    any(keyword in page_text for keyword in ["已签到", "签到成功"])
-                    and "今日未签到" not in page_text
-                ):
-                    self.logger.info("今日已签到")
-                    return True
+                self.logger.error("无法确定签到状态")
+                return False
 
-            # 查找签到按钮
+            # 执行签到操作
+            return self._perform_signin_action()
+
+        except Exception as e:
+            self.logger.error(f"签到失败: {e}")
+            return False
+
+    def _check_signin_status(self) -> str:
+        """
+        检查签到状态
+
+        Returns:
+            "already_signed": 已签到
+            "need_signin": 需要签到
+            "unknown": 无法确定状态
+        """
+        try:
+            self.logger.debug("检查签到状态，查找签到按钮区域")
+
+            # 先查找签到按钮区域
+            sign_area_selector = "div.ddpc_sign_btna"
+            sign_area = self.element_finder.find_by_selectors([sign_area_selector])
+
+            if not sign_area:
+                self.logger.warning("未找到签到按钮区域 div.ddpc_sign_btna")
+                return "unknown"
+
+            # 获取按钮区域的所有子元素
+            buttons = sign_area.find_elements("tag name", "a")
+
+            for button in buttons:
+                try:
+                    button_class = button.get_attribute("class") or ""
+                    button_text = button.text.strip()
+
+                    self.logger.debug(
+                        f"检查按钮 - class: '{button_class}', text: '{button_text}'"
+                    )
+
+                    # 检查是否是灰色按钮（已签到）
+                    if "ddpc_sign_btn_grey" in button_class:
+                        if "今日已签到" in button_text:
+                            self.logger.info(f"✅ 检测到已签到状态: {button_text}")
+                            return "already_signed"
+
+                    # 检查是否是红色按钮（未签到）
+                    elif "ddpc_sign_btn_red" in button_class:
+                        self.logger.info(f"🔴 检测到未签到状态: {button_text}")
+                        return "need_signin"
+
+                except Exception as e:
+                    self.logger.debug(f"检查按钮时出错: {e}")
+                    continue
+
+            # 如果没有找到明确的按钮状态，返回未知状态
+            self.logger.warning("⚠️ 未找到明确的签到按钮状态，返回未知状态")
+            return "unknown"
+
+        except Exception as e:
+            self.logger.error(f"检查签到状态时出错: {e}")
+            return "unknown"
+
+    def _perform_signin_action(self) -> bool:
+        """
+        执行具体的签到操作
+
+        Returns:
+            是否签到成功
+        """
+        try:
+            # 查找红色签到按钮
             sign_button_selectors = [
+                "div.ddpc_sign_btna a.ddpc_sign_btn_red",
                 "a.ddpc_sign_btn_red",
                 'a[class*="sign_btn"]',
                 'a[href*="sign"]',
@@ -505,33 +627,83 @@ class SignInManager:
                 sign_button_selectors
             )
             if not sign_button:
-                self.logger.error("未找到签到按钮")
+                self.logger.error("未找到可点击的签到按钮")
                 return False
 
-            # 检查按钮文本
-            button_text = sign_button.text
-            button_href = sign_button.get_attribute("href")
+            # 检查按钮文本和属性
+            button_text = sign_button.text.strip()
+            button_class = sign_button.get_attribute("class") or ""
+            button_href = sign_button.get_attribute("href") or ""
+
             self.logger.debug(
-                f"找到签到按钮 - 文本: '{button_text}', href: '{button_href}'"
+                f"找到签到按钮 - 文本: '{button_text}', class: '{button_class}', href: '{button_href}'"
             )
 
-            if any(
-                keyword in button_text for keyword in ["今日未签到", "点击签到", "签到"]
+            # 确保这是一个有效的签到按钮
+            if "ddpc_sign_btn_red" in button_class or any(
+                keyword in button_text for keyword in ["签到", "点击"]
             ):
-                self.logger.info("点击签到按钮")
-                self.logger.debug(f"按钮文本符合条件，准备点击: '{button_text}'")
+                self.logger.info(f"开始点击签到按钮: '{button_text}'")
                 BrowserHelper.safe_click(self.driver, sign_button, self.logger)
                 TimingManager.smart_wait(
                     TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger
                 )
 
-                # 处理验证
-                return self.handle_sign_verification()
+                # 处理签到验证
+                if self.handle_sign_verification():
+                    self.logger.info("✅ 签到成功完成")
+                    return True
+                else:
+                    self.logger.error("❌ 签到验证失败")
+                    return False
             else:
-                self.logger.info("签到状态异常")
-
-            return False
+                self.logger.warning(f"按钮不符合签到条件: '{button_text}'")
+                return False
 
         except Exception as e:
-            self.logger.error(f"签到失败: {e}")
+            self.logger.error(f"执行签到操作时出错: {e}")
             return False
+
+    def _navigate_to_signin_page(self) -> bool:
+        """
+        导航到签到页面并验证URL
+
+        Returns:
+            是否成功进入签到页面
+        """
+        for attempt in range(3):
+            try:
+                self.logger.debug(f"尝试进入签到页面 - 第{attempt + 1}次")
+
+                # 点击签到导航
+                sign_nav_selectors = [
+                    'a[href="plugin.php?id=dd_sign:index"]',
+                    'a[href*="dd_sign"]',
+                ]
+
+                sign_nav_link = self.element_finder.find_clickable_by_selectors(
+                    sign_nav_selectors
+                )
+                if not sign_nav_link:
+                    self.logger.warning(f"第{attempt + 1}次未找到签到导航链接")
+                    continue
+
+                BrowserHelper.safe_click(self.driver, sign_nav_link, self.logger)
+                TimingManager.smart_wait(
+                    TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger
+                )
+
+                # 验证当前URL是否为签到页面
+                current_url = self.driver.current_url
+                if "plugin.php?id=dd_sign" in current_url:
+                    self.logger.info(f"成功进入签到页面: {current_url}")
+                    return True
+                else:
+                    self.logger.warning(
+                        f"第{attempt + 1}次未成功进入签到页面，当前URL: {current_url}"
+                    )
+
+            except Exception as e:
+                self.logger.warning(f"第{attempt + 1}次进入签到页面失败: {e}")
+
+        return False

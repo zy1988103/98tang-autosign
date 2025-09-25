@@ -172,6 +172,10 @@ class BrowserDriverManager:
                     "--disable-web-security",
                     "--allow-running-insecure-content",
                     "--window-size=1920,1080",
+                    # 中文字体支持配置
+                    "--font-render-hinting=none",
+                    "--disable-font-subpixel-positioning",
+                    "--force-device-scale-factor=1",
                 ]
                 browser_args.extend(ci_args)
 
@@ -179,10 +183,35 @@ class BrowserDriverManager:
                 options.add_argument(arg)
                 self.logger.debug(f"添加浏览器参数: {arg}")
 
-            # 允许弹出窗口
-            prefs = {"profile.default_content_setting_values": {"popups": 1}}
+            # 配置浏览器偏好设置
+            prefs = {
+                "profile.default_content_setting_values": {"popups": 1},
+                # 中文字体配置
+                "webkit.webprefs.fonts.standard.Hans": "SimSun",
+                "webkit.webprefs.fonts.serif.Hans": "SimSun",
+                "webkit.webprefs.fonts.sansserif.Hans": "SimHei",
+                "webkit.webprefs.fonts.cursive.Hans": "SimSun",
+                "webkit.webprefs.fonts.fantasy.Hans": "SimSun",
+                "webkit.webprefs.fonts.pictograph.Hans": "SimSun",
+                "webkit.webprefs.default_encoding": "UTF-8",
+            }
+
+            # CI环境的额外字体配置
+            if os.getenv("GITHUB_ACTIONS") or os.getenv("CI"):
+                # 在CI环境中，使用系统可能安装的中文字体
+                ci_font_prefs = {
+                    "webkit.webprefs.fonts.standard.Hans": "Noto Sans CJK SC",
+                    "webkit.webprefs.fonts.serif.Hans": "Noto Serif CJK SC",
+                    "webkit.webprefs.fonts.sansserif.Hans": "Noto Sans CJK SC",
+                    "webkit.webprefs.fonts.cursive.Hans": "Noto Sans CJK SC",
+                    "webkit.webprefs.fonts.fantasy.Hans": "Noto Sans CJK SC",
+                    "webkit.webprefs.fonts.pictograph.Hans": "Noto Sans CJK SC",
+                }
+                prefs.update(ci_font_prefs)
+                self.logger.debug("配置CI环境中文字体偏好")
+
             options.add_experimental_option("prefs", prefs)
-            self.logger.debug("配置弹出窗口策略: 允许")
+            self.logger.debug("配置浏览器偏好设置: 弹出窗口允许、中文字体支持")
 
             # 创建驱动
             self.logger.debug("开始初始化浏览器实例")
