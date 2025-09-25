@@ -20,6 +20,7 @@
 """
 
 import sys
+import os
 import argparse
 import signal
 import atexit
@@ -74,8 +75,10 @@ def main():
   python main.py --debug      # 调试模式运行
 
 配置文件:
-  程序会自动读取 config.env 配置文件
+  本地运行：程序会自动读取 config.env 配置文件
   如果不存在，请复制 config.env.example 并修改配置
+  
+  CI环境：程序会自动使用环境变量，无需配置文件
         """,
     )
 
@@ -89,11 +92,15 @@ def main():
 
     args = parser.parse_args()
 
-    # 检查配置文件是否存在
+    # 检查配置文件是否存在（仅在本地运行时检查）
+    # GitHub Actions 等 CI 环境使用环境变量，无需配置文件
     config_path = Path(args.config)
-    if not config_path.exists():
+    is_ci_environment = os.getenv("GITHUB_ACTIONS") or os.getenv("CI")
+
+    if not config_path.exists() and not is_ci_environment:
         print(f"❌ 配置文件不存在: {args.config}")
         print("请复制 config.env.example 为 config.env 并填写配置")
+        print("或者设置环境变量 SITE_USERNAME 和 SITE_PASSWORD")
         return 1
 
     print("=" * 50)

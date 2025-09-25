@@ -75,6 +75,33 @@ A: 可能的原因：
 3. 账号状态异常
 4. 检查程序日志确认签到状态
 
+### Q: workflow只能在main分支运行吗？
+A: 不是的，分支运行规则如下：
+- **定时任务 (schedule)**: 只在默认分支（通常是main）上运行
+- **手动触发 (workflow_dispatch)**: 可以在任何分支上运行
+- **推送触发 (push)**: 可以配置在指定分支上运行
+- **PR触发 (pull_request)**: 可以配置在PR目标分支上运行
+
+如果你想在develop分支测试，可以：
+1. 切换到develop分支
+2. 在GitHub Actions页面手动触发workflow
+3. 或者推送代码到develop分支（如果配置了push触发器）
+
+### Q: GitHub Actions显示"配置文件不存在: config.env"错误？
+A: 这是因为程序在CI环境中仍然检查配置文件。解决方案：
+
+**方法1：推荐 - 升级到最新版本**
+最新版本已经修复了这个问题，会自动检测CI环境并跳过配置文件检查。
+
+**方法2：临时解决**
+确保你的GitHub Actions环境变量已正确设置：
+- 使用Environment secrets（推荐）或Repository secrets
+- 必须设置 `SITE_USERNAME` 和 `SITE_PASSWORD`
+- 确保secrets名称完全匹配
+
+**方法3：手动修复**
+如果使用旧版本，在 `main.py` 中添加CI环境检测。
+
 ### Q: 如何调试程序？
 A: 本地运行时设置：
 ```env

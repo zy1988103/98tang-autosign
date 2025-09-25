@@ -3,9 +3,16 @@ name: 98tang Auto Sign-in
 on:
   schedule:
     # 每天北京时间上午9点执行 (UTC+8 = UTC+0-8, 所以9点对应UTC 1点)
+    # 注意：schedule 只在默认分支(main)上运行
     - cron: '0 1 * * *'
   workflow_dispatch:
-    # 允许手动触发
+    # 允许手动触发 - 可在任何分支运行
+  push:
+    # 当推送到指定分支时触发
+    branches: [ main, develop ]
+  pull_request:
+    # 当创建PR到指定分支时触发（可选，用于测试）
+    branches: [ main ]
 
 jobs:
   # Environment secrets模式（优先）- 使用98tang-autosign环境
