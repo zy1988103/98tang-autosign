@@ -4,20 +4,14 @@ name: 98tang Auto Sign-in
 
 on:
   schedule:
-    # 每天北京时间0:00~0:30随机执行 (UTC+8 = UTC+0-8, 所以0点对应UTC 16点)
-    # 使用多个时间点增加随机性，配合代码内随机延迟实现0:00~0:30范围内随机执行
+    # 每天北京时间0:00执行 (UTC+8 = UTC+0-8, 所以0点对应UTC 16点)
     # 注意：schedule 只在默认分支(main)上运行
     - cron: '0 16 * * *'   # 北京时间 0:00
-    - cron: '5 16 * * *'   # 北京时间 0:05
-    - cron: '10 16 * * *'  # 北京时间 0:10
-    - cron: '15 16 * * *'  # 北京时间 0:15
-    - cron: '20 16 * * *'  # 北京时间 0:20
-    - cron: '25 16 * * *'  # 北京时间 0:25
   workflow_dispatch:
     # 允许手动触发 - 可在任何分支运行
   push:
-    # 当推送到指定分支时触发
-    branches: [ main, develop ]
+    # 当推送到main分支时触发（develop分支不会自动运行）
+    branches: [ main ]
   pull_request:
     # 当创建PR到指定分支时触发（可选，用于测试）
     branches: [ main ]
@@ -28,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: 98tang-autosign
+    # 确保只在main分支上运行自动签到
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     outputs:
       failure_reason: ${{ steps.check_config.outputs.failure_reason }}
     
@@ -72,15 +68,11 @@ jobs:
         fi
         echo "✅ 配置验证通过 (Environment secrets模式: 98tang-autosign)"
         
-    - name: 随机延迟执行
+    - name: 显示执行时间
       run: |
-        # 生成0-1800秒(0-30分钟)的随机延迟，确保在北京时间0:00~0:30内随机执行
-        DELAY=$((RANDOM % 1801))
-        echo "🎲 随机延迟: ${DELAY}秒 ($(($DELAY/60))分钟$(($DELAY%60))秒)"
         echo "⏰ 当前UTC时间: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "🌏 当前北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
-        echo "⏳ 延迟后将在北京时间 $(TZ='Asia/Shanghai' date -d "+${DELAY} seconds" '+%H:%M:%S') 开始执行"
-        sleep $DELAY
+        echo "🚀 开始执行自动签到任务"
         
     - name: 执行自动签到
       env:
@@ -163,8 +155,8 @@ jobs:
 
   # Repository secrets模式（智能回退）- 当Environment secrets不可用时使用
   autosign-repository:
-    # 只有当Environment secrets模式失败且是配置问题时才运行
-    if: failure() && needs.autosign-environment.result == 'failure' && needs.autosign-environment.outputs.failure_reason == 'missing_environment_secrets'
+    # 只有当Environment secrets模式失败且是配置问题时才运行，且只在main分支上运行
+    if: failure() && needs.autosign-environment.result == 'failure' && needs.autosign-environment.outputs.failure_reason == 'missing_environment_secrets' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
     needs: autosign-environment
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -210,15 +202,11 @@ jobs:
         echo "✅ 配置验证通过 (Repository secrets模式 - 回退模式)"
         echo "⚠️ 建议配置 98tang-autosign 环境以获得更好的安全性"
         
-    - name: 随机延迟执行
+    - name: 显示执行时间
       run: |
-        # 生成0-1800秒(0-30分钟)的随机延迟，确保在北京时间0:00~0:30内随机执行
-        DELAY=$((RANDOM % 1801))
-        echo "🎲 随机延迟: ${DELAY}秒 ($(($DELAY/60))分钟$(($DELAY%60))秒)"
         echo "⏰ 当前UTC时间: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "🌏 当前北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
-        echo "⏳ 延迟后将在北京时间 $(TZ='Asia/Shanghai' date -d "+${DELAY} seconds" '+%H:%M:%S') 开始执行"
-        sleep $DELAY
+        echo "🚀 开始执行自动签到任务"
         
     - name: 执行自动签到
       env:

@@ -487,9 +487,12 @@ class SignInManager:
 
             self.logger.debug(f"计算出答案: {answer}")
 
-            # 填写答案
-            answer_selectors = ['input[name="secanswer"]', 'input[id*="secqaaverify"]']
+            # 模拟人类思考计算过程
+            self.logger.info("模拟人类思考计算过程...")
+            self._simulate_thinking_process(answer)
 
+            # 查找答案输入框
+            answer_selectors = ['input[name="secanswer"]', 'input[id*="secqaaverify"]']
             answer_input = self.element_finder.find_by_selectors(answer_selectors)
 
             if answer_input:
@@ -499,12 +502,29 @@ class SignInManager:
                     f"找到答案输入框 - name: '{input_name}', id: '{input_id}'"
                 )
 
-                answer_input.clear()
-                answer_input.send_keys(str(answer))
+                # 人性化输入：模拟真实用户行为
+                self.logger.info("开始填入答案...")
+                self._humanize_input(answer_input, str(answer))
                 self.logger.info(f"已填入答案: {answer}")
                 self.logger.debug("答案填写完成")
 
-                return True
+                # 模拟用户检查答案的过程
+                self.logger.info("模拟用户检查答案...")
+                TimingManager.smart_wait(1.0, 0.5, self.logger)
+
+                # 查找并点击签到按钮
+                self.logger.info("查找签到按钮...")
+                submit_button = self._find_submit_button()
+                if submit_button:
+                    self.logger.info("找到签到按钮，开始模拟人类点击...")
+                    # 人性化点击：模拟真实用户行为
+                    self._humanize_click(submit_button)
+                    self.logger.info("签到按钮点击完成")
+                    TimingManager.smart_wait(2.0, 1.0, self.logger)
+                    return True
+                else:
+                    self.logger.error("未找到签到按钮")
+                    return False
             else:
                 self.logger.error("未找到答案输入框")
                 return False
@@ -564,6 +584,11 @@ class SignInManager:
         try:
             self.logger.debug("检查签到状态，查找签到按钮区域")
 
+            # 先检查是否有系统繁忙提示
+            if self._check_system_busy():
+                self.logger.warning("检测到系统繁忙，无法确定签到状态")
+                return "unknown"
+
             # 先查找签到按钮区域
             sign_area_selector = "div.ddpc_sign_btna"
             sign_area = self.element_finder.find_by_selectors([sign_area_selector])
@@ -615,12 +640,28 @@ class SignInManager:
             是否签到成功
         """
         try:
-            # 查找红色签到按钮
+            # 扩展签到按钮选择器，支持button和a标签
             sign_button_selectors = [
+                # 原有的a标签选择器
                 "div.ddpc_sign_btna a.ddpc_sign_btn_red",
                 "a.ddpc_sign_btn_red",
                 'a[class*="sign_btn"]',
                 'a[href*="sign"]',
+                # 新增button标签选择器
+                'button[name="signsubmit"]',
+                'button[type="submit"][name="signsubmit"]',
+                'button.pn.pnc[name="signsubmit"]',
+                'button[class*="pn"][class*="pnc"]',
+                'button[type="submit"]',
+                'input[type="submit"][name="signsubmit"]',
+                'input[type="button"][name="signsubmit"]',
+                # XPath选择器
+                '//button[@name="signsubmit"]',
+                '//button[@type="submit" and @name="signsubmit"]',
+                '//button[contains(@class, "pn") and contains(@class, "pnc")]',
+                '//button[contains(text(), "签到")]',
+                '//input[@type="submit" and @name="signsubmit"]',
+                '//input[@type="button" and @name="signsubmit"]',
             ]
 
             sign_button = self.element_finder.find_clickable_by_selectors(
@@ -634,16 +675,37 @@ class SignInManager:
             button_text = sign_button.text.strip()
             button_class = sign_button.get_attribute("class") or ""
             button_href = sign_button.get_attribute("href") or ""
+            button_name = sign_button.get_attribute("name") or ""
+            button_type = sign_button.get_attribute("type") or ""
+            button_tag = sign_button.tag_name.lower()
 
             self.logger.debug(
-                f"找到签到按钮 - 文本: '{button_text}', class: '{button_class}', href: '{button_href}'"
+                f"找到签到按钮 - 标签: '{button_tag}', 文本: '{button_text}', "
+                f"class: '{button_class}', href: '{button_href}', "
+                f"name: '{button_name}', type: '{button_type}'"
             )
 
             # 确保这是一个有效的签到按钮
-            if "ddpc_sign_btn_red" in button_class or any(
-                keyword in button_text for keyword in ["签到", "点击"]
-            ):
-                self.logger.info(f"开始点击签到按钮: '{button_text}'")
+            is_valid_button = (
+                # 原有的a标签判断
+                "ddpc_sign_btn_red" in button_class
+                or
+                # 新增button标签判断
+                button_name == "signsubmit"
+                or (button_type == "submit" and button_name == "signsubmit")
+                or ("pn" in button_class and "pnc" in button_class)
+                or
+                # 文本内容判断
+                any(keyword in button_text for keyword in ["签到", "点击", "Sign"])
+                or
+                # href判断
+                "sign" in button_href.lower()
+            )
+
+            if is_valid_button:
+                self.logger.info(
+                    f"开始点击签到按钮: '{button_text}' (标签: {button_tag}, name: {button_name})"
+                )
                 BrowserHelper.safe_click(self.driver, sign_button, self.logger)
                 TimingManager.smart_wait(
                     TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger
@@ -651,13 +713,15 @@ class SignInManager:
 
                 # 处理签到验证
                 if self.handle_sign_verification():
-                    self.logger.info("✅ 签到成功完成")
-                    return True
+                    # 签到完成后，重新验证签到状态
+                    return self._verify_signin_success()
                 else:
                     self.logger.error("❌ 签到验证失败")
                     return False
             else:
-                self.logger.warning(f"按钮不符合签到条件: '{button_text}'")
+                self.logger.warning(
+                    f"按钮不符合签到条件: '{button_text}' (标签: {button_tag}, name: {button_name})"
+                )
                 return False
 
         except Exception as e:
@@ -707,3 +771,361 @@ class SignInManager:
                 self.logger.warning(f"第{attempt + 1}次进入签到页面失败: {e}")
 
         return False
+
+    def _verify_signin_success(self, max_retries: int = 3) -> bool:
+        """
+        验证签到是否成功，检测系统繁忙状态并重试
+        如果刷新后仍显示未签到，重新执行签到流程
+
+        Args:
+            max_retries: 最大重试次数
+
+        Returns:
+            是否签到成功
+        """
+        for attempt in range(max_retries):
+            try:
+                self.logger.info(f"验证签到状态 (第 {attempt + 1}/{max_retries} 次)")
+
+                # 刷新页面重新检查签到状态
+                self.driver.refresh()
+                TimingManager.smart_wait(
+                    TimingManager.PAGE_LOAD_DELAY, 1.0, self.logger
+                )
+
+                # 检查是否有系统繁忙提示
+                if self._check_system_busy():
+                    self.logger.warning(f"检测到系统繁忙提示 (第 {attempt + 1} 次)")
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 5  # 递增等待时间：5秒、10秒、15秒
+                        self.logger.info(f"等待 {wait_time} 秒后重试...")
+                        TimingManager.smart_wait(wait_time, 1.0, self.logger)
+                        continue
+                    else:
+                        self.logger.error("系统繁忙，重试次数已达上限")
+                        return False
+
+                # 重新检查签到状态
+                signin_status = self._check_signin_status()
+
+                if signin_status == "already_signed":
+                    self.logger.info("✅ 签到验证成功，状态确认已签到")
+                    return True
+                elif signin_status == "need_signin":
+                    self.logger.warning(f"签到状态仍显示未签到 (第 {attempt + 1} 次)")
+                    if attempt < max_retries - 1:
+                        # 如果仍显示未签到，重新执行签到流程
+                        self.logger.info("重新执行签到流程...")
+                        wait_time = (attempt + 1) * 2  # 等待时间：2秒、4秒、6秒
+                        self.logger.info(f"等待 {wait_time} 秒后重新签到...")
+                        TimingManager.smart_wait(wait_time, 1.0, self.logger)
+
+                        # 重新执行签到操作
+                        if self._perform_signin_action():
+                            self.logger.info("重新签到成功")
+                            return True
+                        else:
+                            self.logger.warning("重新签到失败，继续重试")
+                            continue
+                    else:
+                        self.logger.error("签到验证失败，状态仍显示未签到")
+                        return False
+                else:
+                    self.logger.warning(f"无法确定签到状态 (第 {attempt + 1} 次)")
+                    if attempt < max_retries - 1:
+                        # 如果无法确定状态，也尝试重新执行签到流程
+                        self.logger.info("状态不明确，尝试重新执行签到流程...")
+                        wait_time = (attempt + 1) * 2  # 等待时间：2秒、4秒、6秒
+                        self.logger.info(f"等待 {wait_time} 秒后重新签到...")
+                        TimingManager.smart_wait(wait_time, 1.0, self.logger)
+
+                        # 重新执行签到操作
+                        if self._perform_signin_action():
+                            self.logger.info("重新签到成功")
+                            return True
+                        else:
+                            self.logger.warning("重新签到失败，继续重试")
+                            continue
+                    else:
+                        self.logger.error("签到验证失败，无法确定状态")
+                        return False
+
+            except Exception as e:
+                self.logger.error(f"验证签到状态时出错 (第 {attempt + 1} 次): {e}")
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2
+                    self.logger.info(f"等待 {wait_time} 秒后重试...")
+                    TimingManager.smart_wait(wait_time, 1.0, self.logger)
+                    continue
+                else:
+                    self.logger.error("签到验证失败，重试次数已达上限")
+                    return False
+
+        return False
+
+    def _check_system_busy(self) -> bool:
+        """
+        检查页面是否显示系统繁忙提示
+
+        Returns:
+            是否检测到系统繁忙
+        """
+        try:
+            # 检查常见的系统繁忙提示文本
+            busy_texts = [
+                "系统繁忙",
+                "请稍等重试",
+                "系统繁忙,请稍等重试",
+                "服务器繁忙",
+                "请稍后再试",
+                "系统维护中",
+            ]
+
+            page_text = self.driver.page_source.lower()
+
+            for busy_text in busy_texts:
+                if busy_text.lower() in page_text:
+                    self.logger.debug(f"检测到系统繁忙提示: {busy_text}")
+                    return True
+
+            # 检查是否有弹窗提示
+            alert_selectors = [".alert", ".message", ".tip", ".warning", ".error"]
+
+            for selector in alert_selectors:
+                elements = self.driver.find_elements("css selector", selector)
+                for element in elements:
+                    element_text = element.text.strip().lower()
+                    for busy_text in busy_texts:
+                        if busy_text.lower() in element_text:
+                            self.logger.debug(
+                                f"检测到弹窗中的系统繁忙提示: {busy_text}"
+                            )
+                            return True
+
+            return False
+
+        except Exception as e:
+            self.logger.debug(f"检查系统繁忙状态时出错: {e}")
+            return False
+
+    def _find_submit_button(self):
+        """
+        查找提交按钮
+
+        Returns:
+            提交按钮元素或None
+        """
+        try:
+            # 多种提交按钮选择器
+            submit_selectors = [
+                # 常见的提交按钮
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button[name="signsubmit"]',
+                'input[name="signsubmit"]',
+                # 包含提交文本的按钮
+                'button:contains("提交")',
+                'button:contains("确认")',
+                'button:contains("签到")',
+                'input[value*="提交"]',
+                'input[value*="确认"]',
+                'input[value*="签到"]',
+                # XPath选择器
+                '//button[@type="submit"]',
+                '//input[@type="submit"]',
+                '//button[contains(text(), "提交")]',
+                '//button[contains(text(), "确认")]',
+                '//button[contains(text(), "签到")]',
+                '//input[@value="提交"]',
+                '//input[@value="确认"]',
+                '//input[@value="签到"]',
+                # 表单提交按钮
+                'form button[type="submit"]',
+                'form input[type="submit"]',
+            ]
+
+            submit_button = self.element_finder.find_clickable_by_selectors(
+                submit_selectors
+            )
+
+            if submit_button:
+                button_text = submit_button.text.strip()
+                button_value = submit_button.get_attribute("value") or ""
+                button_type = submit_button.get_attribute("type") or ""
+                button_name = submit_button.get_attribute("name") or ""
+
+                self.logger.debug(
+                    f"找到提交按钮 - 文本: '{button_text}', value: '{button_value}', "
+                    f"type: '{button_type}', name: '{button_name}'"
+                )
+
+                return submit_button
+            else:
+                self.logger.warning("未找到提交按钮")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"查找提交按钮时出错: {e}")
+            return None
+
+    def _humanize_input(self, element, text):
+        """
+        人性化输入：模拟真实用户输入行为
+
+        Args:
+            element: 输入框元素
+            text: 要输入的文本
+        """
+        try:
+            import random
+            import time
+
+            # 先点击输入框，模拟用户行为
+            element.click()
+            time.sleep(random.uniform(0.1, 0.3))
+
+            # 清空输入框
+            element.clear()
+            time.sleep(random.uniform(0.1, 0.2))
+
+            # 逐字符输入，模拟真实打字速度
+            for char in text:
+                element.send_keys(char)
+                # 随机延迟，模拟真实打字速度
+                time.sleep(random.uniform(0.05, 0.15))
+
+            # 输入完成后稍微等待
+            time.sleep(random.uniform(0.2, 0.5))
+
+            self.logger.debug(f"人性化输入完成: {text}")
+
+        except Exception as e:
+            self.logger.error(f"人性化输入失败: {e}")
+            # 如果人性化输入失败，使用普通输入
+            element.clear()
+            element.send_keys(text)
+
+    def _humanize_click(self, element):
+        """
+        人性化点击：模拟真实用户点击行为
+
+        Args:
+            element: 要点击的元素
+        """
+        try:
+            import random
+            import time
+            from selenium.webdriver.common.action_chains import ActionChains
+
+            # 随机等待，模拟用户思考时间
+            time.sleep(random.uniform(0.5, 1.5))
+
+            # 滚动到元素可见区域
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+            time.sleep(random.uniform(0.2, 0.5))
+
+            # 使用ActionChains模拟更自然的鼠标移动和点击
+            actions = ActionChains(self.driver)
+
+            # 移动到元素位置
+            actions.move_to_element(element)
+            time.sleep(random.uniform(0.1, 0.3))
+
+            # 点击元素
+            actions.click(element)
+            actions.perform()
+
+            self.logger.debug("人性化点击完成")
+
+        except Exception as e:
+            self.logger.error(f"人性化点击失败: {e}")
+            # 如果人性化点击失败，使用普通点击
+            BrowserHelper.safe_click(self.driver, element, self.logger)
+
+    def _humanize_page_interaction(self):
+        """
+        人性化页面交互：模拟真实用户浏览行为
+        """
+        try:
+            import random
+            import time
+
+            # 随机滚动页面，模拟用户浏览
+            scroll_amount = random.randint(100, 500)
+            self.driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+            time.sleep(random.uniform(0.5, 1.0))
+
+            # 随机等待，模拟用户阅读时间
+            time.sleep(random.uniform(1.0, 3.0))
+
+            self.logger.debug("人性化页面交互完成")
+
+        except Exception as e:
+            self.logger.error(f"人性化页面交互失败: {e}")
+
+    def _simulate_human_behavior(self):
+        """
+        模拟人类行为：随机延迟和交互
+        """
+        try:
+            import random
+            import time
+
+            # 随机等待时间，模拟用户思考
+            wait_time = random.uniform(1.0, 3.0)
+            self.logger.debug(f"模拟人类行为，等待 {wait_time:.2f} 秒")
+            time.sleep(wait_time)
+
+            # 随机页面交互
+            if random.random() < 0.3:  # 30%概率进行页面交互
+                self._humanize_page_interaction()
+
+        except Exception as e:
+            self.logger.error(f"模拟人类行为失败: {e}")
+
+    def _simulate_thinking_process(self, answer):
+        """
+        模拟人类思考计算过程
+
+        Args:
+            answer: 计算出的答案
+        """
+        try:
+            import random
+            import time
+
+            # 模拟看到题目后的思考时间
+            self.logger.debug("模拟用户看到题目，开始思考...")
+            thinking_time = random.uniform(2.0, 4.0)
+            time.sleep(thinking_time)
+
+            # 模拟计算过程（根据答案复杂度调整时间）
+            if isinstance(answer, (int, float)):
+                if answer < 10:
+                    calc_time = random.uniform(1.0, 2.0)
+                elif answer < 100:
+                    calc_time = random.uniform(2.0, 3.5)
+                else:
+                    calc_time = random.uniform(3.0, 5.0)
+            else:
+                calc_time = random.uniform(1.5, 2.5)
+
+            self.logger.debug(f"模拟用户计算过程，耗时 {calc_time:.2f} 秒")
+            time.sleep(calc_time)
+
+            # 模拟确认答案的过程
+            self.logger.debug("模拟用户确认答案...")
+            confirm_time = random.uniform(0.5, 1.5)
+            time.sleep(confirm_time)
+
+            # 模拟准备输入的状态
+            self.logger.debug("模拟用户准备输入答案...")
+            prep_time = random.uniform(0.3, 0.8)
+            time.sleep(prep_time)
+
+            self.logger.info(f"思考计算完成，准备输入答案: {answer}")
+
+        except Exception as e:
+            self.logger.error(f"模拟思考过程失败: {e}")
+            # 如果模拟失败，至少等待一下
+            time.sleep(random.uniform(1.0, 2.0))

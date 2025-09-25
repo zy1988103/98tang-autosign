@@ -219,9 +219,10 @@ class AutoSignApp:
                 if current_log_file and os.path.exists(current_log_file):
                     log_file_path = current_log_file
 
-            # 检查是否需要实时截图
+            # 检查是否需要实时截图（避免重复发送截图）
             if (
                 self.config_manager.get("TELEGRAM_SEND_SCREENSHOT", False)
+                and not screenshot_path  # 只有在没有静态截图时才发送实时截图
                 and hasattr(self, "browser_manager")
                 and self.browser_manager
                 and hasattr(self.browser_manager, "driver")
@@ -448,9 +449,32 @@ class AutoSignApp:
 
         try:
             self.logger.info("开始执行拟人化活动")
-            self.humanlike_manager.perform_humanlike_activities()
+
+            # 执行拟人化活动并获取详细结果
+            activity_results = (
+                self.humanlike_manager.perform_humanlike_activities_with_results()
+            )
+
+            # 记录浏览活动结果
+            if enable_browsing:
+                browse_success = activity_results.get("browse_success", True)
+                browse_message = activity_results.get(
+                    "browse_message", "拟真浏览执行成功"
+                )
+                self._record_task_result("browse", browse_success, browse_message)
+
+            # 记录回帖活动结果
+            if enable_reply:
+                reply_success = activity_results.get("reply_success", False)
+                reply_message = activity_results.get(
+                    "reply_message", "回帖活动执行失败"
+                )
+                reply_details = activity_results.get("reply_details")
+                self._record_task_result(
+                    "reply", reply_success, reply_message, reply_details
+                )
+
             self.logger.info("拟人化活动执行完成")
-            self._record_task_result("browse", True, "拟人化活动执行成功")
 
         except Exception as e:
             self.logger.warning(f"拟人化活动执行失败: {e}")
@@ -555,12 +579,12 @@ class AutoSignApp:
                 if not self._perform_signin():
                     # 从任务结果中获取更详细的错误信息
                     signin_result = next(
-                        (r for r in self.task_results if r["task"] == "signin"), None
+                        (r for r in self.task_results if r.task_type == "signin"), None
                     )
-                    if signin_result and not signin_result["success"]:
-                        last_error_message = signin_result.get(
-                            "error_details"
-                        ) or signin_result.get("message", "签到失败")
+                    if signin_result and not signin_result.success:
+                        last_error_message = (
+                            signin_result.details or signin_result.message or "签到失败"
+                        )
                     else:
                         last_error_message = "签到失败"
                     self.logger.error(last_error_message)
