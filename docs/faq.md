@@ -1,6 +1,6 @@
-# 故障排除
+# ❓ 故障排除
 
-## 常见问题
+## 🔍 常见问题
 
 ### Q: Github Actions运行失败怎么办？
 A: 检查以下几点：
@@ -82,7 +82,7 @@ SECURITY_QUESTION=你设置的安全提问
 SECURITY_ANSWER=对应的答案
 ```
 
-> 📖 **安全配置详情**: 查看 [configuration.md](configuration.md) 的安全提问配置部分，了解所有安全相关参数。
+> **安全配置详情**: 查看 [configuration.md](configuration.md) 的安全提问配置部分，了解所有安全相关参数。
 
 ### Q: Telegram通知收不到？
 A: 检查以下配置：
@@ -202,9 +202,9 @@ LOG_LEVEL=DEBUG    # 显示详细日志
 
 > 📖 **调试配置指南**: 查看 [configuration.md](configuration.md) 的调试和日志配置部分，了解所有调试相关参数。
 
-## 日志分析
+## 📊 日志分析
 
-### 常见错误信息
+### 🚨 常见错误信息
 
 **登录失败**
 ```
@@ -230,14 +230,14 @@ Error: Security question verification failed
 ```
 解决方案：检查 `SECURITY_QUESTION` 和 `SECURITY_ANSWER` 配置
 
-### 日志级别说明
+### 📝 日志级别说明
 
 - **DEBUG**: 显示所有调试信息，包括页面元素查找过程
 - **INFO**: 显示基本操作信息，如登录、签到状态
 - **WARNING**: 显示警告信息，如重试操作
 - **ERROR**: 只显示错误信息
 
-## 获取帮助
+## 🆘 获取帮助
 
 如果遇到无法解决的问题：
 
