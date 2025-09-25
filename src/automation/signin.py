@@ -564,6 +564,11 @@ class SignInManager:
         try:
             self.logger.debug("检查签到状态，查找签到按钮区域")
 
+            # 先检查是否有系统繁忙提示
+            if self._check_system_busy():
+                self.logger.warning("检测到系统繁忙，无法确定签到状态")
+                return "unknown"
+
             # 先查找签到按钮区域
             sign_area_selector = "div.ddpc_sign_btna"
             sign_area = self.element_finder.find_by_selectors([sign_area_selector])

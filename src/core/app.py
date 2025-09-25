@@ -219,9 +219,10 @@ class AutoSignApp:
                 if current_log_file and os.path.exists(current_log_file):
                     log_file_path = current_log_file
 
-            # 检查是否需要实时截图
+            # 检查是否需要实时截图（避免重复发送截图）
             if (
                 self.config_manager.get("TELEGRAM_SEND_SCREENSHOT", False)
+                and not screenshot_path  # 只有在没有静态截图时才发送实时截图
                 and hasattr(self, "browser_manager")
                 and self.browser_manager
                 and hasattr(self.browser_manager, "driver")
@@ -578,12 +579,12 @@ class AutoSignApp:
                 if not self._perform_signin():
                     # 从任务结果中获取更详细的错误信息
                     signin_result = next(
-                        (r for r in self.task_results if r["task"] == "signin"), None
+                        (r for r in self.task_results if r.task_type == "signin"), None
                     )
-                    if signin_result and not signin_result["success"]:
-                        last_error_message = signin_result.get(
-                            "error_details"
-                        ) or signin_result.get("message", "签到失败")
+                    if signin_result and not signin_result.success:
+                        last_error_message = (
+                            signin_result.details or signin_result.message or "签到失败"
+                        )
                     else:
                         last_error_message = "签到失败"
                     self.logger.error(last_error_message)
