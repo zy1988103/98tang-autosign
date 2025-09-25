@@ -548,8 +548,8 @@ class SignInManager:
 
             # 首先检查是否已签到 - 查找灰色的"今日已签到"按钮
             already_signed_selector = "div.ddpc_sign_btna a.ddpc_sign_btn_grey"
-            already_signed_element = self.element_finder.find_by_selector(
-                already_signed_selector
+            already_signed_element = self.element_finder.find_by_selectors(
+                [already_signed_selector]
             )
 
             if already_signed_element:
@@ -564,8 +564,8 @@ class SignInManager:
 
             # 检查是否存在红色的签到按钮
             sign_button_selector = "div.ddpc_sign_btna a.ddpc_sign_btn_red"
-            sign_button_element = self.element_finder.find_by_selector(
-                sign_button_selector
+            sign_button_element = self.element_finder.find_by_selectors(
+                [sign_button_selector]
             )
 
             if sign_button_element:

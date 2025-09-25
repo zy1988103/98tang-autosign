@@ -479,8 +479,7 @@ class AutoSignApp:
                 self.logger.error(error_msg)
                 self._record_task_result("signin", False, "签到执行失败")
 
-                # 发送签到失败通知
-                self._send_error_with_log(error_msg, "签到操作失败")
+                # 注意：这里不发送错误通知，由run()方法统一处理
 
                 return False
 
@@ -489,8 +488,7 @@ class AutoSignApp:
             self.logger.error(error_msg)
             self._record_task_result("signin", False, "签到过程出错", str(e))
 
-            # 发送签到异常通知
-            self._send_error_with_log(error_msg, "签到过程异常")
+            # 注意：这里不发送错误通知，由run()方法统一处理
 
             return False
 
@@ -554,7 +552,16 @@ class AutoSignApp:
                 # 步骤5: 签到
                 self.logger.debug("步骤5: 执行签到流程")
                 if not self._perform_signin():
-                    last_error_message = "签到失败"
+                    # 从任务结果中获取更详细的错误信息
+                    signin_result = next(
+                        (r for r in self.task_results if r["task"] == "signin"), None
+                    )
+                    if signin_result and not signin_result["success"]:
+                        last_error_message = signin_result.get(
+                            "error_details"
+                        ) or signin_result.get("message", "签到失败")
+                    else:
+                        last_error_message = "签到失败"
                     self.logger.error(last_error_message)
                     return False
 
